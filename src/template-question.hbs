@@ -1,0 +1,60 @@
+<pl-question-panel>
+  <markdown>
+    # In-Class Exercise ## Questions
+
+    {{#each this as |item|}}
+      ### File:
+      {{item.group}}
+      {{#each item.lines as |line|}}
+
+        #### Position:
+        {{line.lines}}
+
+        {{#if line.title}}
+          - Title:
+          {{line.title}}
+        {{/if}}
+
+        {{#if line.category}}
+          - Category:
+          {{line.category}}
+        {{/if}}
+
+        {{#if line.sha}}
+          - SHA:
+          {{line.sha}}
+        {{/if}}
+
+        Click the "Open Workspace" button below to start working on the exercise.
+
+        {{#if line.comment}}
+          <p>{{line.comment}}</p>
+        {{/if}}
+
+        {{#if line.code}}
+          ```
+          {{codeBlock line.code}}
+          ```
+        {{/if}}
+
+        <pl-string-input answers-name='cd_command' label='Command'></pl-string-input>
+
+        {{#if line.additional}}
+          <p>Useful information:</p>
+          <ul>
+            <li><a href='{{line.additional}}'>{{line.additional}}</a></li>
+          </ul>
+        {{/if}}
+
+      {{/each}}
+    {{/each}}
+
+  </markdown>
+
+  <pl-workspace></pl-workspace>
+</pl-question-panel>
+
+<pl-submission-panel>
+  <pl-external-grader-results></pl-external-grader-results>
+  <pl-file-preview></pl-file-preview>
+</pl-submission-panel>

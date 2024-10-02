@@ -53,6 +53,10 @@
         "title": "Code Review: Export as HTML with default template"
       },
       {
+        "command": "codeReview.exportAsHtmlWithQuestionTemplate",
+        "title": "Code Review: Export as HTML with question template"
+      },
+      {
         "command": "codeReview.exportAsHtmlWithHandlebarsTemplate",
         "title": "Code Review: Export as HTML with Handlebars template"
       },
@@ -153,6 +157,11 @@
           "command": "codeReview.exportAsHtmlWithDefaultTemplate",
           "when": "view == code-review.list",
           "group": "export_html@0"
+        },
+        {
+          "command": "codeReview.exportAsHtmlWithQuestionTemplate",
+          "when": "view == code-review.list",
+          "group": "export_html@1"
         },
         {
           "command": "codeReview.exportAsHtmlWithHandlebarsTemplate",
@@ -294,7 +303,7 @@
           "type": "boolean",
           "title": "Include Code Selection in Report",
           "description": "Define whether to include the code selection(s) in generated reports or not.",
-          "default": false
+          "default": true
         },
         "code-review.reportWithPrivateComments": {
           "type": "boolean",
@@ -303,6 +312,12 @@
           "default": false
         },
         "code-review.defaultTemplatePath": {
+          "type": "string",
+          "title": "The path to a default Handlebars template to be used for HTML default export",
+          "description": "The template is used when choosing 'Export as HTML with default template' extension command. Otherwise the out-of-the-box template provided by this extension is used.",
+          "default": ""
+        },
+        "code-review.defaultHtmlTemplatePath": {
           "type": "string",
           "title": "The path to a default Handlebars template to be used for HTML default export",
           "description": "The template is used when choosing 'Export as HTML with default template' extension command. Otherwise the out-of-the-box template provided by this extension is used.",
