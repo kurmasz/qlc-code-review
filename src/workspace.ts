@@ -54,6 +54,7 @@ export class WorkspaceContext {
   private setReviewFileSelectedCsvRegistration!: Disposable;
   private deleteNoteRegistration!: Disposable;
   private exportAsHtmlWithDefaultTemplateRegistration!: Disposable;
+  private exportAsHtmlWithQuestionTemplateRegistration!: Disposable;
   private exportAsHtmlWithHandlebarsTemplateRegistration!: Disposable;
   private exportAsMarkdownWithDefaultTemplateRegistration!: Disposable;
   private exportAsMarkdownWithHandlebarsTemplateRegistration!: Disposable;
@@ -208,6 +209,15 @@ export class WorkspaceContext {
       : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template.default.hbs')));
   }
 
+  getQuestionTemplate(): Uri {
+    const defaultConfigurationTemplatePath = workspace
+      .getConfiguration()
+      .get('code-review.questionTemplatePath') as string;
+    return defaultConfigurationTemplatePath
+      ? Uri.file(defaultConfigurationTemplatePath)
+      : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template-question.hbs')));
+  }
+
   getDefaultMarkdownTemplate(): Uri {
     const defaultMarkdownTemplatePath = workspace
       .getConfiguration()
@@ -319,6 +329,16 @@ export class WorkspaceContext {
       'codeReview.exportAsHtmlWithDefaultTemplate',
       () => {
         this.exportFactory.exportForFormat('html', this.getDefaultTemplate());
+      },
+    );
+
+    /**
+     * allow users to export the report as HTML using the questions handlebars template
+     */
+    this.exportAsHtmlWithQuestionTemplateRegistration = commands.registerCommand(
+      'codeReview.exportAsHtmlWithQuestionTemplate',
+      () => {
+        this.exportFactory.exportForFormat('html', this.getQuestionTemplate());
       },
     );
 
@@ -527,6 +547,7 @@ export class WorkspaceContext {
       this.filterByPriorityDisableRegistration,
       this.setReviewFileSelectedCsvRegistration,
       this.exportAsHtmlWithDefaultTemplateRegistration,
+      this.exportAsHtmlWithQuestionTemplateRegistration,
       this.exportAsHtmlWithHandlebarsTemplateRegistration,
       this.exportAsMarkdownWithDefaultTemplateRegistration,
       this.exportAsMarkdownWithHandlebarsTemplateRegistration,
@@ -554,6 +575,7 @@ export class WorkspaceContext {
     this.filterByPriorityDisableRegistration.dispose();
     this.setReviewFileSelectedCsvRegistration.dispose();
     this.exportAsHtmlWithDefaultTemplateRegistration.dispose();
+    this.exportAsHtmlWithQuestionTemplateRegistration.dispose();
     this.exportAsHtmlWithHandlebarsTemplateRegistration.dispose();
     this.exportAsMarkdownWithDefaultTemplateRegistration.dispose();
     this.exportAsMarkdownWithHandlebarsTemplateRegistration.dispose();
