@@ -60,6 +60,38 @@ export class WebViewComponent {
     this.editor = null;
   }
 
+  /**
+   * Get cached comments from workspace configuration
+   */
+  private getCachedComments(): CsvEntry[] {
+    // Get the global storage path
+    const globalStoragePath = this.context.globalStorageUri.fsPath;
+    const globalStorageFile = path.join(globalStoragePath, 'cached-comments.json');
+
+    // Check if directory exists
+    if (!fs.existsSync(globalStoragePath)) {
+      // Create the directory if it doesn't exist
+      try {
+        fs.mkdirSync(globalStoragePath, { recursive: true });
+      } catch (error) {
+        window.showErrorMessage(`Error creating the cached comments directory: ${error}`);
+      }
+    }
+
+    // Check if the file exists
+    if (!fs.existsSync(globalStorageFile)) {
+      // Create the file if it doesn't exist
+      try {
+        fs.writeFileSync(globalStorageFile, '[]');
+      } catch (error) {
+        window.showErrorMessage(`Error creating the cached comments file: ${error}`);
+      }
+    }
+
+    // Read and parse the file content
+    return JSON.parse(fs.readFileSync(globalStorageFile, 'utf8'));
+  }
+
   deleteComment(commentService: ReviewCommentService, entry: CommentListEntry) {
     commentService.deleteComment(entry.id, entry.description);
     this.panel?.dispose();
@@ -80,7 +112,7 @@ export class WebViewComponent {
     // panel.webview.html = fs.readFileSync(pathUri.fsPath, 'utf8');
     // const priorities = workspace.getConfiguration().get('code-review.priorities') as string[];
     data = CsvStructure.finalizeParse(data);
-    panel.webview.postMessage({ comment: { ...data } });
+    panel.webview.postMessage({ comment: { ...data }, cachedComments: this.getCachedComments() }); // send data, cached comments to webview
 
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
@@ -98,6 +130,11 @@ export class WebViewComponent {
               private: formData.private || 0,
             };
             commentService.updateComment(newEntry, this.getWorkingEditor());
+
+            // if comment is private, cache it
+            if (newEntry.private) {
+              commentService.cacheComment(newEntry, this.context);
+            }
             panel.dispose();
             break;
 
@@ -138,12 +175,21 @@ export class WebViewComponent {
 
     const panel = this.showPanel('Add code review comment', editor.document.fileName);
 
+    panel.webview.postMessage({ cachedComments: this.getCachedComments() }); // send cached comments to webview
+
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
       (message) => {
         switch (message.command) {
           case 'submit':
-            commentService.addComment(createCommentFromObject(message.text), this.getWorkingEditor());
+            const newComment: CsvEntry = createCommentFromObject(message.text);
+
+            commentService.addComment(newComment, this.getWorkingEditor());
+
+            // if comment is private, cache it
+            if (newComment.private) {
+              commentService.cacheComment(newComment, this.context);
+            }
             break;
 
           case 'cancel':

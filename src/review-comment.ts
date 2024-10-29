@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { window, workspace, TextEditor } from 'vscode';
+import { window, workspace, TextEditor, ExtensionContext } from 'vscode';
 const gitCommitId = require('git-commit-id');
 import { CsvEntry, CsvStructure } from './model';
 import {
@@ -65,6 +65,44 @@ export class ReviewCommentService {
 
     rows[updateRowIndex] = CsvStructure.formatAsCsvLine(this.finalizeComment(comment));
     setCsvFileLines(this.reviewFile, rows);
+  }
+
+  /**
+   * Cache a comment into VSCode storage as jSON
+   * @param comment The comment to cache
+   * @param context The extension context
+   */
+  async cacheComment(comment: CsvEntry, context: ExtensionContext) {
+    // Append the comment in json file in the global storage uri path
+    const globalStoragePath = context.globalStorageUri.fsPath;
+    const globalStorageFile = path.join(globalStoragePath, 'cached-comments.json');
+
+    // Check if directory exists
+    const dir = path.dirname(globalStorageFile);
+    if (!fs.existsSync(dir)) {
+      // Create the directory if it doesn't exist
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch (error) {
+        window.showErrorMessage(`Error creating the cached comments directory: ${error}`);
+      }
+    }
+
+    // Create the file if it doesn't exist
+    if (!fs.existsSync(globalStorageFile)) {
+      try {
+        fs.writeFileSync(globalStorageFile, '[]');
+      } catch (error) {
+        window.showErrorMessage(`Error creating the cached comments file: ${error}`);
+      }
+    }
+
+    // Get old content
+    const rows = JSON.parse(fs.readFileSync(globalStorageFile, 'utf8'));
+    // Add the new comment
+    rows.push({ comment: comment.comment, additional: comment.additional });
+    // Write to file
+    fs.writeFileSync(globalStorageFile, JSON.stringify(rows, null, 2));
   }
 
   async deleteComment(id: string, label: string) {
