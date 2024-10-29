@@ -91,7 +91,7 @@
         display: block;
         background-color: #333;
         width: 50px;
-        height: 130px;
+        height: 90px;
         border-radius: 15px;
       }
       input.traffic-light-color {
@@ -140,6 +140,41 @@
         padding-left: 20px;
         justify-self: center;
       }
+
+      /* Style for the suggestions dropdown */
+      .question-container,
+      .answer-container {
+        position: relative; /* Position relative to the input */
+        margin: 0;
+        padding: 0;
+      }
+      #comment-suggestions,
+      #answer-suggestions {
+        display: none; /* Hidden by default */
+        position: absolute; /* Position relative to the input */
+        list-style-type: none;
+        color: #000;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 0;
+        max-height: 150px; /* Set max height */
+        overflow-y: auto; /* Enable vertical scroll */
+        top: calc(100% - 24px); /* Position below the input */
+        width: 100%;
+        z-index: 1000; /* Ensure it's on top */
+      }
+
+      #comment-suggestions li,
+      #answer-suggestions li {
+        padding: 8px;
+        cursor: pointer; /* Show pointer cursor */
+      }
+
+      #comment-suggestions li:hover,
+      #answer-suggestions li:hover {
+        background-color: #f0f0f0; /* Highlight on hover */
+      }
     </style>
   </head>
 
@@ -162,27 +197,35 @@
             SELECT_LIST_STRING
           </select>
 
-          <label for="comment">Description</label>
+          <label for="comment">Question</label>
 
-          <textarea
-            id="comment"
-            name="comment"
-            placeholder="A detailed description (e.g. 'Split method into smaller functions and utils')"
-            rows="5"
-          ></textarea>
+          <div class="question-container">
+            <textarea
+              id="comment"
+              name="comment"
+              placeholder="A question to the author (e.g. 'What is the purpose of this method?')"
+              rows="5"
+            ></textarea>
+            <ul id="comment-suggestions"></ul>
+            <!-- Suggestions for comment field -->
+          </div>
 
-          <label for="additional">Additional Info</label>
+          <label for="additional">Answer</label>
 
-          <input
-            id="additional"
-            name="additional"
-            type="text"
-            placeholder="An additional info or link (e.g. 'http://example.com')"
-          />
+          <div class="answer-container">
+            <textarea
+              id="additional"
+              name="additional"
+              placeholder="An answer to the question (e.g. 'This method is used to ...')"
+              rows="5"
+            ></textarea>
+            <ul id="answer-suggestions"></ul>
+            <!-- Suggestions for answer field -->
+          </div>
         </div>
 
         <div class="col-right">
-          <label id="priority">Priority</label>
+          <label id="priority">Auto-grade</label>
 
           <div id="traffic-light" role="radiogroup" aria-labelledby="priority" tabindex="0">
             <input
@@ -191,17 +234,17 @@
               name="traffic-light-color"
               id="prio-3"
               value="3"
-              aria-label="Priority: high"
+              aria-label="Auto-grade: No"
             />
 
-            <input
+            <!-- <input
               type="radio"
               class="traffic-light-color"
               name="traffic-light-color"
               id="prio-2"
               value="2"
               aria-label="Priority: middle"
-            />
+            /> -->
 
             <input
               type="radio"
@@ -209,19 +252,14 @@
               name="traffic-light-color"
               id="prio-1"
               value="1"
-              aria-label="Priority: low"
+              aria-label="Auto-grade: Yes"
             />
           </div>
 
           <p>
-            <label for="private">Private</label>
+            <label for="private">Cache</label>
 
-            <input
-              id="private"
-              name="private"
-              type="checkbox"
-              title="Make comment private to keep it for your eyes only"
-            />
+            <input id="private" name="private" type="checkbox" title="Cache this comment for later review" />
           </p>
         </div>
       </div>
@@ -266,8 +304,85 @@
 
   <script>
     const vscode = acquireVsCodeApi();
+    let cachedComments; // Default value
+
+    // Generalized function to filter suggestions
+    function filterSuggestions(input, cachedData, type, suggestionListId, inputFieldId) {
+      const suggestions = document.getElementById(suggestionListId);
+      suggestions.innerHTML = ''; // Clear previous suggestions
+
+      // If input is empty, hide suggestions and return
+      if (!input) {
+        suggestions.style.display = 'none'; // Hide suggestions if input is empty
+        return;
+      }
+
+      // Filter based on input
+      const filtered = cachedData.filter((item) =>
+        type === 'question'
+          ? item.comment.toLowerCase().includes(input.toLowerCase())
+          : item.additional.toLowerCase().includes(input.toLowerCase()),
+      );
+
+      // Show suggestions header
+      const listHeader = document.createElement('li');
+      listHeader.style.fontWeight = 'bold';
+      listHeader.style.color = 'darkgrey';
+      listHeader.textContent = type === 'question' ? 'Cached Questions' : 'Cached Answers';
+      suggestions.style.display = 'block';
+      suggestions.appendChild(listHeader);
+
+      // Show suggestions or no suggestions available
+      if (filtered.length > 0 && input) {
+        filtered.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = type === 'question' ? item.comment : item.additional; // Set text based on type
+          li.onclick = () => {
+            document.getElementById(inputFieldId).value = type === 'question' ? item.comment : item.additional; // Set input value on click
+            suggestions.style.display = 'none'; // Hide suggestions after selection
+          };
+          suggestions.appendChild(li);
+        });
+      } else {
+        // Show no suggestions available
+        const li = document.createElement('li');
+        li.textContent = 'No suggestions available';
+        suggestions.appendChild(li);
+      }
+    }
+
+    // Listen for input events on the comment field
+    document.getElementById('comment').addEventListener('input', (event) => {
+      filterSuggestions(event.target.value, cachedComments, 'question', 'comment-suggestions', 'comment');
+    });
+
+    // Listen for input events on the additional field
+    document.getElementById('additional').addEventListener('input', (event) => {
+      filterSuggestions(event.target.value, cachedComments, 'answer', 'answer-suggestions', 'additional');
+    });
+
+    // Hide suggestions when clicking outside comment suggestions/comment input
+    document.addEventListener('click', (event) => {
+      const commentSuggestions = document.getElementById('comment-suggestions');
+
+      if (!commentSuggestions.contains(event.target) && event.target.id !== 'comment') {
+        commentSuggestions.style.display = 'none';
+      }
+    });
+
+    // Hide suggestions when clicking outside answer suggestions/answer input
+    document.addEventListener('click', (event) => {
+      const answerSuggestions = document.getElementById('answer-suggestions');
+
+      if (!answerSuggestions.contains(event.target) && event.target.id !== 'additional') {
+        answerSuggestions.style.display = 'none';
+      }
+    });
 
     window.addEventListener('message', (event) => {
+      // Update the cached comments
+      cachedComments = event.data.cachedComments;
+
       document.getElementById('delete-button').style.visibility = 'visible';
       document.getElementById('add').innerHTML = 'Update';
       document.getElementById('add').disabled = false;
