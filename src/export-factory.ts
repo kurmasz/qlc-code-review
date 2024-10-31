@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { stripIndent } from 'common-tags';
 import handlebars from 'handlebars';
+import markdownPdf from 'markdown-pdf'; // Import the markdown-pdf module
 
 import {
   workspace,
@@ -333,6 +334,55 @@ export class ExportFactory {
         handleEnd: (outputFile: string, rows: CsvEntry[]) => {
           fs.writeFileSync(outputFile, JSON.stringify(rows, null, 2));
           window.showInformationMessage(`GitHub importable CSV file: '${outputFile}' successfully created.`);
+        },
+      },
+    ],
+    [
+      'questions-pdf',
+      {
+        fileExtension: 'pdf',
+        storeOutside: true,
+        writeFileHeader: (_outputFile: string) => {
+          return;
+        },
+        handleData: (_outputFile: string, row: CsvEntry): CsvEntry => {
+          row.code = this.includeCodeSelection ? this.getCodeForFile(row.filename, row.lines) : '';
+          return row;
+        },
+        handleEnd: (outputFile: string, rows: CsvEntry[], template: Uri) => {
+          const markdownOutput = outputFile.replace('.pdf', '.md');
+
+          try {
+            // Read the template data
+            const templateData = fs.readFileSync(template.fsPath, 'utf8');
+            const templateCompiled = handlebars.compile(templateData);
+
+            // Process and group rows
+            const reviewExportData: ReviewFileExportSection[] = this.groupResults(rows, this.groupBy);
+            if (this.groupBy === Group.filename) {
+              reviewExportData.forEach((group) => group.lines.sort(sortCsvEntryForLines));
+            }
+
+            // Decode encoded codeblock and compile Markdown using Handlebars
+            handlebars.registerHelper('codeBlock', (code: string) => decode(code));
+            const markdownOut = templateCompiled(reviewExportData);
+
+            // Write Markdown output file
+            fs.writeFileSync(markdownOutput, markdownOut);
+            window.showInformationMessage(`Markdown file: '${markdownOutput}' successfully created.`);
+
+            // Step 5: Convert Markdown to PDF
+            markdownPdf()
+              .from(markdownOutput)
+              .to(outputFile, (error: any) => {
+                if (error) {
+                  throw new Error(`PDF conversion failed: ${error.message}`);
+                }
+                window.showInformationMessage(`PDF file: '${outputFile}' successfully created.`);
+              });
+          } catch (error: any) {
+            window.showErrorMessage(`Failed to export to PDF: ${error.message}`);
+          }
         },
       },
     ],

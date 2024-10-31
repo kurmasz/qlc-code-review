@@ -329,6 +329,12 @@
           "description": "The template is used when choosing 'Export as Markdown with default template' extension command. Otherwise the out-of-the-box template provided by this extension is used.",
           "default": ""
         },
+        "code-review.defaultStudentQuestionMarkdownTemplatePath": {
+          "type": "string",
+          "title": "The path to a Handlebars template to be used for Markdown student question export",
+          "description": "The template is used when choosing 'Export as PDF with question template' extension command.",
+          "default": ""
+        },
         "code-review.priorities": {
           "type": "array",
           "title": "Priority labels",
@@ -536,6 +542,7 @@
     "git-commit-id": "^2.0.1",
     "handlebars": "^4.7.7",
     "js-base64": "^3.7.2",
+    "markdown-pdf": "^11.0.0",
     "uuid": "^8.3.2"
   }
 }

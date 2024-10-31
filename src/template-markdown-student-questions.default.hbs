@@ -1,0 +1,22 @@
+# Code Review Questions
+
+{{#each this as |item|}}
+  ## `{{item.group}}`
+  {{#each item.lines as |line|}}
+    {{#if line.title}}
+      * Title: `{{line.title}}`
+    {{/if}}
+    {{#if line.category}}
+      * Category: `{{line.category}}`
+    {{/if}}
+    {{#if line.comment}}
+      * Question: `{{line.comment}}`
+    {{/if}}
+    {{#if line.code}}
+      * Code: ```
+      {{{codeBlock line.code}}}
+      ```
+    {{/if}}
+    * Answer:
+  {{/each}}
+{{/each}}
