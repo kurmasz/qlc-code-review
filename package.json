@@ -69,6 +69,10 @@
         "title": "Code Review: Export as Markdown with Handlebars template"
       },
       {
+        "command": "codeReview.exportAsQuestionsPdf",
+        "title": "Code Review: Export as PDF with question template"
+      },
+      {
         "command": "codeReview.exportAsGitLabImportableCsv",
         "title": "Code Review: Export as GitLab importable CSV file"
       },
