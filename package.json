@@ -281,15 +281,10 @@
             "type": "string"
           },
           "default": [
-            "Architecture",
-            "Best Practices",
-            "Code-Style",
-            "Complexity",
-            "Error Handling",
-            "Maintainability",
-            "Performance",
-            "Reliability",
-            "Separation of concerns"
+            "Short Answer",
+            "Trace Code",
+            "Write Code",
+            "Provide Input"
           ]
         },
         "code-review.groupBy": {
