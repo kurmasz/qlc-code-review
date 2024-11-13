@@ -1,22 +1,28 @@
 # Code Review Questions
 
 {{#each this as |item|}}
-  ## `{{item.group}}`
+  ##
+  {{item.group}}
   {{#each item.lines as |line|}}
     {{#if line.title}}
-      * Title: `{{line.title}}`
+      ### Title:
+      {{line.title}}
     {{/if}}
     {{#if line.category}}
-      * Category: `{{line.category}}`
+      #### Category:
+      {{line.category}}
     {{/if}}
     {{#if line.comment}}
-      * Question: `{{line.comment}}`
+      #### Question:
+      {{line.comment}}
     {{/if}}
     {{#if line.code}}
-      * Code: ```
+      #### Code: ```bash
       {{{codeBlock line.code}}}
       ```
     {{/if}}
-    * Answer:
+    #### Answer: ---
+
   {{/each}}
+
 {{/each}}
