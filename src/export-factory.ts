@@ -109,7 +109,7 @@ export class ExportFactory {
     return (
       (this.currentCommitId === null || entry.sha === this.currentCommitId) &&
       (this.currentFilename === null || entry.filename === this.currentFilename) &&
-      (!this.filterByPriority || entry.priority != 1) // prio value 1 = green traffic light
+      (!this.filterByPriority || entry.priority !== 1) // prio value 1 = green traffic light
     );
   }
 
@@ -371,13 +371,11 @@ export class ExportFactory {
             fs.writeFileSync(markdownOutput, markdownOut);
             window.showInformationMessage(`Markdown file: '${markdownOutput}' successfully created.`);
 
-            // Step 5: Convert Markdown to PDF
+            // Convert Markdown to PDF
+            // fs.createReadStream(markdownOutput).pipe(markdownPdf()).pipe(fs.createWriteStream(outputFile))
             markdownPdf()
               .from(markdownOutput)
-              .to(outputFile, (error: any) => {
-                if (error) {
-                  throw new Error(`PDF conversion failed: ${error.message}`);
-                }
+              .to(outputFile, () => {
                 window.showInformationMessage(`PDF file: '${outputFile}' successfully created.`);
               });
           } catch (error: any) {
