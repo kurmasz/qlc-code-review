@@ -367,6 +367,8 @@ export class ExportFactory {
             handlebars.registerHelper('codeBlock', (code: string) => decode(code));
             const markdownOut = templateCompiled(reviewExportData);
 
+            handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
+
             // Write Markdown output file
             fs.writeFileSync(markdownOutput, markdownOut);
             window.showInformationMessage(`Markdown file: '${markdownOutput}' successfully created.`);

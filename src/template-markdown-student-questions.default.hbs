@@ -1,27 +1,26 @@
-# Code Review Questions
-
 {{#each this as |item|}}
-  ##
-  {{item.group}}
   {{#each item.lines as |line|}}
-    {{#if line.title}}
+    ##
+    {{item.group}}
+    {{~#if line.title~}}
       ### Title:
       {{line.title}}
     {{/if}}
-    {{#if line.category}}
-      #### Category:
-      {{line.category}}
-    {{/if}}
+
     {{#if line.comment}}
-      #### Question:
+
+      ### Question
+      {{@index}}:
       {{line.comment}}
     {{/if}}
+
     {{#if line.code}}
-      #### Code: ```bash
+      ### Code: ~~~
       {{{codeBlock line.code}}}
-      ```
+      ~~~ {: .language-python}
     {{/if}}
-    #### Answer: ---
+
+    <p class='pagebreak'></p>
 
   {{/each}}
 
