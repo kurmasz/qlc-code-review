@@ -353,6 +353,8 @@ export class ExportFactory {
           const markdownOutput = outputFile.replace('.pdf', '.md');
 
           try {
+            // Allow questions to be 1-indexed instead of 0-indexed
+            handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
             // Read the template data
             const templateData = fs.readFileSync(template.fsPath, 'utf8');
             const templateCompiled = handlebars.compile(templateData);
@@ -366,8 +368,6 @@ export class ExportFactory {
             // Decode encoded codeblock and compile Markdown using Handlebars
             handlebars.registerHelper('codeBlock', (code: string) => decode(code));
             const markdownOut = templateCompiled(reviewExportData);
-
-            handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
 
             // Write Markdown output file
             fs.writeFileSync(markdownOutput, markdownOut);
