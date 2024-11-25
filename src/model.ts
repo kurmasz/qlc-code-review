@@ -66,6 +66,7 @@ export class CsvStructure {
    * - A deprecated stored property can't be removed from the array.
    */
   private static readonly headers: string[] = [
+    'id',
     'sha',
     'filename',
     'url',
@@ -75,8 +76,8 @@ export class CsvStructure {
     'priority',
     'category',
     'additional',
-    'id',
     'private',
+    'code', // Column added for encoded code snippets
   ];
 
   /**
@@ -88,6 +89,7 @@ export class CsvStructure {
   private static readonly defaults: Map<string, () => any> = new Map([
     ['id', () => uuidv4()],
     ['private', () => 0],
+    ['code', () => ''], // Default value for code snippets
   ]);
 
   /**
@@ -175,6 +177,7 @@ export class CsvStructure {
     comment.comment = unescapeEndOfLineFromCsv(comment.comment);
     comment.priority = Number(comment.priority);
     comment.private = Number(comment.private);
+    comment.code = comment.code || ''; // Ensure `code` is initialized properly
 
     return comment;
   }

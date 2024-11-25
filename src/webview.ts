@@ -7,6 +7,8 @@ import { createCommentFromObject, CsvEntry, CsvStructure } from './model';
 import { CommentListEntry } from './comment-list-entry';
 import { clearSelection, getSelectionRanges } from './utils/editor-utils';
 import { colorizedBackgroundDecoration } from './utils/decoration-utils';
+// Import helper function to get code for file
+import { getCodeForFile } from './utils/workspace-util';
 
 export class WebViewComponent {
   /** Store all configured categories */
@@ -114,6 +116,10 @@ export class WebViewComponent {
     data = CsvStructure.finalizeParse(data);
     panel.webview.postMessage({ comment: { ...data }, cachedComments: this.getCachedComments() }); // send data, cached comments to webview
 
+    // Add logic to include encoded code snippet during editing
+    const encodedSnippet = getCodeForFile(data.filename, data.lines, this.context.extensionPath);
+    data.code = encodedSnippet;
+
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
       (message) => {
@@ -128,6 +134,7 @@ export class WebViewComponent {
               category: formData.category || '',
               priority: formData.priority || 0,
               private: formData.private || 0,
+              code: encodedSnippet, // Include encoded snippet
             };
             commentService.updateComment(newEntry, this.getWorkingEditor());
 
@@ -175,6 +182,14 @@ export class WebViewComponent {
 
     const panel = this.showPanel('Add code review comment', editor.document.fileName);
 
+    // Generate encoded snippet for the selected lines
+    const filename = editor.document.fileName;
+    const selectionRanges = getSelectionRanges(editor);
+    const lineRanges = selectionRanges
+      .map((range) => `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`)
+      .join('|');
+    const encodedSnippet = getCodeForFile(filename, lineRanges, this.context.extensionPath);
+
     panel.webview.postMessage({ cachedComments: this.getCachedComments() }); // send cached comments to webview
 
     // Handle messages from the webview
@@ -182,7 +197,7 @@ export class WebViewComponent {
       (message) => {
         switch (message.command) {
           case 'submit':
-            const newComment: CsvEntry = createCommentFromObject(message.text);
+            const newComment: CsvEntry = { ...createCommentFromObject(message.text), code: encodedSnippet }; // Include encoded snippet
 
             commentService.addComment(newComment, this.getWorkingEditor());
 
