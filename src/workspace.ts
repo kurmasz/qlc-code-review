@@ -58,6 +58,7 @@ export class WorkspaceContext {
   private exportAsHtmlWithHandlebarsTemplateRegistration!: Disposable;
   private exportAsMarkdownWithDefaultTemplateRegistration!: Disposable;
   private exportAsMarkdownWithHandlebarsTemplateRegistration!: Disposable;
+  private exportAsQuestionsPdfRegistration!: Disposable;
   private exportAsGitLabImportableCsvRegistration!: Disposable;
   private exportAsGitHubImportableCsvRegistration!: Disposable;
   private exportAsJiraImportableCsvRegistration!: Disposable;
@@ -225,6 +226,15 @@ export class WorkspaceContext {
     return defaultMarkdownTemplatePath
       ? Uri.file(defaultMarkdownTemplatePath)
       : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template-markdown.default.hbs')));
+  }
+
+  getDefaultQuestionMarkdownTemplate(): Uri {
+    const defaultMarkdownTemplatePath = workspace
+      .getConfiguration()
+      .get('code-review.defaultStudentQuestionMarkdownTemplatePath') as string;
+    return defaultMarkdownTemplatePath
+      ? Uri.file(defaultMarkdownTemplatePath)
+      : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template-markdown-student-questions.default.hbs')));
   }
 
   registerCommands() {
@@ -401,6 +411,13 @@ export class WorkspaceContext {
     );
 
     /**
+     * allow users to export student questions as PDF
+     */
+    this.exportAsQuestionsPdfRegistration = commands.registerCommand('codeReview.exportAsQuestionsPdf', () => {
+      this.exportFactory.exportForFormat('questions-pdf', this.getDefaultQuestionMarkdownTemplate());
+    });
+
+    /**
      * allow users to export the report as GitLab importable CSV file
      */
     this.exportAsGitLabImportableCsvRegistration = commands.registerCommand(
@@ -551,6 +568,7 @@ export class WorkspaceContext {
       this.exportAsHtmlWithHandlebarsTemplateRegistration,
       this.exportAsMarkdownWithDefaultTemplateRegistration,
       this.exportAsMarkdownWithHandlebarsTemplateRegistration,
+      this.exportAsQuestionsPdfRegistration,
       this.exportAsGitLabImportableCsvRegistration,
       this.exportAsGitHubImportableCsvRegistration,
       this.exportAsJiraImportableCsvRegistration,
@@ -579,6 +597,7 @@ export class WorkspaceContext {
     this.exportAsHtmlWithHandlebarsTemplateRegistration.dispose();
     this.exportAsMarkdownWithDefaultTemplateRegistration.dispose();
     this.exportAsMarkdownWithHandlebarsTemplateRegistration.dispose();
+    this.exportAsQuestionsPdfRegistration.dispose();
     this.exportAsGitLabImportableCsvRegistration.dispose();
     this.exportAsGitHubImportableCsvRegistration.dispose();
     this.exportAsJiraImportableCsvRegistration.dispose();

@@ -69,6 +69,10 @@
         "title": "Code Review: Export as Markdown with Handlebars template"
       },
       {
+        "command": "codeReview.exportAsQuestionsPdf",
+        "title": "Code Review: Export as PDF with question template"
+      },
+      {
         "command": "codeReview.exportAsGitLabImportableCsv",
         "title": "Code Review: Export as GitLab importable CSV file"
       },
@@ -277,15 +281,10 @@
             "type": "string"
           },
           "default": [
-            "Architecture",
-            "Best Practices",
-            "Code-Style",
-            "Complexity",
-            "Error Handling",
-            "Maintainability",
-            "Performance",
-            "Reliability",
-            "Separation of concerns"
+            "Short Answer",
+            "Trace Code",
+            "Write Code",
+            "Provide Input"
           ]
         },
         "code-review.groupBy": {
@@ -327,6 +326,12 @@
           "type": "string",
           "title": "The path to a default Handlebars template to be used for Markdown default export",
           "description": "The template is used when choosing 'Export as Markdown with default template' extension command. Otherwise the out-of-the-box template provided by this extension is used.",
+          "default": ""
+        },
+        "code-review.defaultStudentQuestionMarkdownTemplatePath": {
+          "type": "string",
+          "title": "The path to a Handlebars template to be used for Markdown student question export",
+          "description": "The template is used when choosing 'Export as PDF with question template' extension command.",
           "default": ""
         },
         "code-review.priorities": {
@@ -495,12 +500,13 @@
     "prepare": "husky install"
   },
   "devDependencies": {
-    "@commitlint/cli": "^16.2.4",
+    "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^16.2.4",
     "@types/common-tags": "^1.8.1",
     "@types/glob": "^7.2.0",
     "@types/handlebars": "^4.1.0",
     "@types/js-base64": "^3.3.1",
+    "@types/markdown-pdf": "^9.0.5",
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.59.0",
@@ -519,8 +525,8 @@
     "standard-version": "^9.3.2",
     "ts-loader": "^9.3.0",
     "typescript": "^4.6.4",
-    "vsce": "^2.7.0",
-    "vscode-extension-tester": "^4.2.4",
+    "vsce": "^1.97.0",
+    "vscode-extension-tester": "^8.8.2",
     "vscode-test": "^1.6.1",
     "webpack": "^5.72.0",
     "webpack-cli": "^4.9.2"
@@ -536,6 +542,7 @@
     "git-commit-id": "^2.0.1",
     "handlebars": "^4.7.7",
     "js-base64": "^3.7.2",
+    "markdown-pdf": "^11.0.0",
     "uuid": "^8.3.2"
   }
 }
