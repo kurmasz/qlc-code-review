@@ -2,22 +2,24 @@
   {{#each item.lines as |line|}}
     ##
     {{item.group}}
+
     {{~#if line.title~}}
       ### Title:
       {{line.title}}
+    {{else}}
+
     {{/if}}
 
     {{#if line.comment}}
-
       ### Question
       {{inc @index}}
       {{line.comment}}
     {{/if}}
 
     {{#if line.code}}
-      ### Code: ~~~
+      ### Code: ~~~~ python
       {{{codeBlock line.code}}}
-      ~~~ {: .language-python}
+      ~~~~
     {{/if}}
 
     <p class='pagebreak'></p>
