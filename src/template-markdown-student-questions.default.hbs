@@ -1,29 +1,20 @@
 {{#each this as |item|}}
-  {{#each item.lines as |line|}}
-    ##
-    {{item.group}}
-
-    {{~#if line.title~}}
-      ### Title:
-      {{line.title}}
-    {{else}}
-
-    {{/if}}
-
-    {{#if line.comment}}
-      ### Question
-      {{inc @index}}
-      {{line.comment}}
-    {{/if}}
-
-    {{#if line.code}}
-      ### Code: ~~~~ python
-      {{{codeBlock line.code}}}
-      ~~~~
-    {{/if}}
-
-    <p class='pagebreak'></p>
-
-  {{/each}}
-
+{{#each item.lines as |line|}}
+## {{item.group}}
+{{~#if line.title~}}
+### Title: {{line.title}}
+{{else}}
+{{/if}}
+{{#if line.comment}}
+### Question
+{{inc @index}}
+{{line.comment}}
+{{/if}}
+{{#if line.code}}
+### Code: ~~~~ python
+{{{codeBlock line.code}}}
+~~~~
+{{/if}}
+<p class='pagebreak'></p>
+{{/each}}
 {{/each}}
