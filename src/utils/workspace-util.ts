@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { WorkspaceFolder, Position, Range, TextEditor } from 'vscode';
 import { EOL } from 'os';
+import { encode as base64Encode } from 'js-base64'; // Import js-base64 encoding function
 import { CsvEntry } from '../model';
 
 /**
@@ -221,3 +222,80 @@ export const getBackupFilename = (reviewFilePath: string): string => {
 export const standardizeFilename = (workspaceRoot: string, filename: string): string => {
   return filename.replace(workspaceRoot, '');
 };
+
+/**
+ * Extracts and encodes a code snippet from a file based on line ranges.
+ *
+ * @param filename - The path to the file.
+ * @param lines - A string defining the line ranges (e.g., "2:2-5:3|8:0-10:5").
+ * @param workspaceRoot - The root directory of the workspace (optional).
+ * @returns The encoded code snippet as a string.
+ */
+export function getCodeForFile(filename: string, lines: string, workspaceRoot?: string): string {
+  if (!filename || !lines) {
+    return '';
+  }
+
+  // Resolve the file path
+  const filePath = workspaceRoot ? path.resolve(workspaceRoot, filename) : path.resolve(filename);
+
+  // Ensure the file exists
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+
+  const fileContent = fs.readFileSync(filePath, 'utf8').split(EOL);
+
+  // Parse the line ranges
+  const lineRanges = parseLineRanges(lines);
+
+  let result = '';
+  lineRanges.forEach((range) => {
+    const { startLine, startChar, endLine, endChar } = range;
+
+    // Extract the specified lines and characters
+    for (let i = startLine; i <= endLine; i++) {
+      const line = fileContent[i] || '';
+      const snippet =
+        i === startLine && i === endLine
+          ? line.slice(startChar, endChar)
+          : i === startLine
+          ? line.slice(startChar)
+          : i === endLine
+          ? line.slice(0, endChar)
+          : line;
+
+      result += snippet + EOL;
+    }
+
+    result += `...${EOL}`; // Add separator between snippets
+  });
+
+  return encode(result.trimEnd());
+}
+
+/**
+ * Parses a string of line ranges into structured objects.
+ *
+ * @param lines - A string defining the line ranges (e.g., "2:2-5:3|8:0-10:5").
+ * @returns An array of parsed line ranges.
+ */
+function parseLineRanges(lines: string): { startLine: number; startChar: number; endLine: number; endChar: number }[] {
+  return lines.split('|').map((range) => {
+    const [start, end] = range.split('-');
+    const [startLine, startChar] = start.split(':').map(Number);
+    const [endLine, endChar] = end.split(':').map(Number);
+
+    return { startLine, startChar, endLine, endChar };
+  });
+}
+
+/**
+ * Encodes a string for safe usage (e.g., in a CSV or other storage format).
+ *
+ * @param content - The string to encode.
+ * @returns The encoded string.
+ */
+function encode(content: string): string {
+  return base64Encode(content); // Use js-base64 for encoding
+}
