@@ -1,4 +1,4 @@
-
+*.hbs
 *.js.map
 *.d.ts
 *.md
