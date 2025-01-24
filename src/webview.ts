@@ -66,32 +66,38 @@ export class WebViewComponent {
    * Get cached comments from workspace configuration
    */
   private getCachedComments(): CsvEntry[] {
-    // Get the global storage path
-    const globalStoragePath = this.context.globalStorageUri.fsPath;
-    const globalStorageFile = path.join(globalStoragePath, 'cached-comments.json');
+    // Get the workspace folder path
+    const workspaceFolders = workspace.workspaceFolders;
 
-    // Check if directory exists
-    if (!fs.existsSync(globalStoragePath)) {
-      // Create the directory if it doesn't exist
-      try {
-        fs.mkdirSync(globalStoragePath, { recursive: true });
-      } catch (error) {
-        window.showErrorMessage(`Error creating the cached comments directory: ${error}`);
-      }
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      window.showErrorMessage('No workspace folder is open. Unable to retrieve cached comments.');
+      return [];
     }
 
+    // Use the first workspace folder
+    const workspacePath = workspaceFolders[0].uri.fsPath;
+
+    // File path in the workspace directory
+    const workspaceFile = path.join(workspacePath, 'cached-comments.json');
+
     // Check if the file exists
-    if (!fs.existsSync(globalStorageFile)) {
+    if (!fs.existsSync(workspaceFile)) {
       // Create the file if it doesn't exist
       try {
-        fs.writeFileSync(globalStorageFile, '[]');
+        fs.writeFileSync(workspaceFile, '[]');
       } catch (error) {
         window.showErrorMessage(`Error creating the cached comments file: ${error}`);
+        return [];
       }
     }
 
     // Read and parse the file content
-    return JSON.parse(fs.readFileSync(globalStorageFile, 'utf8'));
+    try {
+      return JSON.parse(fs.readFileSync(workspaceFile, 'utf8'));
+    } catch (error) {
+      window.showErrorMessage(`Error reading the cached comments file: ${error}`);
+      return [];
+    }
   }
 
   deleteComment(commentService: ReviewCommentService, entry: CommentListEntry) {

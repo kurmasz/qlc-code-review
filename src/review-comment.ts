@@ -73,36 +73,49 @@ export class ReviewCommentService {
    * @param context The extension context
    */
   async cacheComment(comment: CsvEntry, context: ExtensionContext) {
-    // Append the comment in json file in the global storage uri path
-    const globalStoragePath = context.globalStorageUri.fsPath;
-    const globalStorageFile = path.join(globalStoragePath, 'cached-comments.json');
+    // Get the workspace folder path
+    const workspaceFolders = workspace.workspaceFolders;
 
-    // Check if directory exists
-    const dir = path.dirname(globalStorageFile);
-    if (!fs.existsSync(dir)) {
-      // Create the directory if it doesn't exist
-      try {
-        fs.mkdirSync(dir, { recursive: true });
-      } catch (error) {
-        window.showErrorMessage(`Error creating the cached comments directory: ${error}`);
-      }
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      window.showErrorMessage('No workspace folder is open. Unable to cache comments.');
+      return;
     }
 
-    // Create the file if it doesn't exist
-    if (!fs.existsSync(globalStorageFile)) {
+    // Use the first workspace folder
+    const workspacePath = workspaceFolders[0].uri.fsPath;
+
+    // File path in the workspace directory
+    const workspaceFile = path.join(workspacePath, 'cached-comments.json');
+
+    // Check if the file exists
+    if (!fs.existsSync(workspaceFile)) {
+      // Create the file if it doesn't exist
       try {
-        fs.writeFileSync(globalStorageFile, '[]');
+        fs.writeFileSync(workspaceFile, '[]');
       } catch (error) {
         window.showErrorMessage(`Error creating the cached comments file: ${error}`);
+        return;
       }
     }
 
-    // Get old content
-    const rows = JSON.parse(fs.readFileSync(globalStorageFile, 'utf8'));
+    // Read existing comments
+    let rows: any[];
+    try {
+      rows = JSON.parse(fs.readFileSync(workspaceFile, 'utf8'));
+    } catch (error) {
+      rows = [];
+      window.showErrorMessage(`Error reading the cached comments file: ${error}`);
+    }
+
     // Add the new comment
     rows.push({ comment: comment.comment, additional: comment.additional });
-    // Write to file
-    fs.writeFileSync(globalStorageFile, JSON.stringify(rows, null, 2));
+
+    // Write back to the file
+    try {
+      fs.writeFileSync(workspaceFile, JSON.stringify(rows, null, 2));
+    } catch (error) {
+      window.showErrorMessage(`Error writing to the cached comments file: ${error}`);
+    }
   }
 
   async deleteComment(id: string, label: string) {
