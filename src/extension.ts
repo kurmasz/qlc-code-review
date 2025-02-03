@@ -1,9 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 
-import { workspace, ExtensionContext, WorkspaceFolder, window } from 'vscode';
+import { commands, workspace, ExtensionContext, WorkspaceFolder, window } from 'vscode';
 import { getWorkspaceFolder, isProperSubpathOf } from './utils/workspace-util';
 import { WorkspaceContext } from './workspace';
+import { ChatWebview } from './chatWebview';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -40,6 +41,23 @@ export function activate(context: ExtensionContext) {
       workspaceContext.refreshCommands();
     }
   });
+
+  const chatWebview = new ChatWebview(context);
+
+  const activateChat = commands.registerCommand('codeReview.generateQuestions', async () => {
+    // For instance, use the active editor's file content:
+    const editor = window.activeTextEditor;
+    if (!editor) {
+      window.showErrorMessage('Please open a script file first.');
+      return;
+    }
+    const scriptContent = editor.document.getText();
+    // Show the chat webview with the script content in context
+    chatWebview.show(scriptContent);
+  });
+
+  // Register the new command
+  context.subscriptions.push(activateChat);
 
   context.subscriptions.push(activeTextEditorWorkspaceChangesRegistration);
 }

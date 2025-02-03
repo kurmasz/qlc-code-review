@@ -49,6 +49,10 @@
         }
       },
       {
+        "command": "codeReview.generateQuestions",
+        "title": "Code Review: Generate Coding Questions from Script"
+      },
+      {
         "command": "codeReview.exportAsHtmlWithDefaultTemplate",
         "title": "Code Review: Export as HTML with default template"
       },
@@ -543,6 +547,7 @@
     "handlebars": "^4.7.7",
     "js-base64": "^3.7.2",
     "markdown-pdf": "^11.0.0",
+    "openai": "^4.82.0",
     "uuid": "^8.3.2"
   }
 }
