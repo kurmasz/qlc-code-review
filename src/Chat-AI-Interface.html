@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ask AI</title>
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      /* === Basic Reset & VS Code Theming === */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--vscode-editor-background, #1e1e1e);
+        color: var(--vscode-editor-foreground, #ffffff);
+        font-family: var(--vscode-font-family, sans-serif);
+        font-size: var(--vscode-font-size, 14px);
+      }
+
+      /* === Main Container === */
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      /* === Chat Window === */
+      #chat {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: var(--vscode-editor-background, #1e1e1e);
+      }
+
+      .message {
+        padding: 0.5rem 0.8rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+        word-wrap: break-word;
+      }
+
+      /* User messages: right-aligned using margin-left: auto and max-width 60% */
+      .user {
+        background-color: #007aff;
+        color: #ffffff;
+        max-width: 60%;
+        margin-left: auto;
+      }
+
+      /* AI messages: left-aligned using margin-right: auto and max-width 80% */
+      .bot {
+        /* background-color: #333333; */
+        /* width: 100%; */
+        max-width: 80%;
+        margin-right: auto;
+      }
+
+      .error {
+        /* background-color: #ff4c4c; */
+        color: #ffffff;
+      }
+
+      .loading {
+        /* background-color: #1e2a47; */
+        color: #ffffff;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.5rem 0.8rem;
+        border-radius: 8px;
+      }
+
+      .dots {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background-color: white;
+        border-radius: 50%;
+        animation: blink 1.5s infinite;
+      }
+      .dots:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dots:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes blink {
+        0% {
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      /* === Input Area (Bottom) === */
+      #inputContainer {
+        display: flex;
+        align-items: center;
+        padding: 0.4rem 0.8rem;
+        border-top: 1px solid var(--vscode-editorGroup-border, #555);
+        background-color: var(--vscode-titleBar-activeBackground, #3c3c3c);
+        gap: 0.5rem;
+      }
+
+      /* Input & Send Button */
+      #userInput {
+        flex: 1;
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--vscode-editor-background, #1e1e1e);
+        background-color: var(--vscode-input-background, #2d2d2d);
+        color: var(--vscode-input-foreground, #ffffff);
+      }
+      #userInput:focus {
+        outline: 1px solid var(--vscode-focusBorder, #007aff);
+      }
+      #sendButton {
+        background-color: #007aff;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+      }
+      #sendButton:hover {
+        opacity: 0.9;
+      }
+
+      /* === File Context Display (Under Input) === */
+      #fileContextDisplay {
+        padding: 0.4rem 0.8rem;
+        color: #cccccc;
+        font-size: 0.85rem;
+        background-color: var(--vscode-titleBar-activeBackground, #3c3c3c);
+        border-top: 1px solid var(--vscode-editorGroup-border, #555);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <!-- CHAT MESSAGES -->
+      <div id="chat"></div>
+
+      <!-- INPUT AREA -->
+      <div id="inputContainer">
+        <input id="userInput" type="text" placeholder="Ask something..." />
+        <button id="sendButton" onclick="sendMessage()">▶</button>
+      </div>
+
+      <!-- FILE CONTEXT (displayed under the input) -->
+      <div id="fileContextDisplay"></div>
+    </div>
+
+    <script>
+      // Acquire the VS Code API for messaging
+      const vscode = acquireVsCodeApi();
+      vscode.postMessage({ command: 'requestFileContext' });
+
+      function sendMessage() {
+        const input = document.getElementById('userInput');
+        const chatDiv = document.getElementById('chat');
+
+        // Append user message
+        const userMessage = document.createElement('div');
+        userMessage.classList.add('message', 'user');
+        userMessage.innerText = input.value.trim() || 'Sending file context...';
+        chatDiv.appendChild(userMessage);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+
+        // Append loading message
+        const loadingMessage = document.createElement('div');
+        loadingMessage.classList.add('message', 'loading');
+        loadingMessage.id = 'loadingMessage';
+        loadingMessage.innerHTML =
+          'AI is typing <span class="dots"></span><span class="dots"></span><span class="dots"></span>';
+        chatDiv.appendChild(loadingMessage);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+
+        // Send user message to the extension
+        vscode.postMessage({ command: 'ask', text: input.value.trim() });
+        input.value = '';
+      }
+
+      // Listen for messages from the extension
+      window.addEventListener('message', (event) => {
+        const message = event.data;
+        const chatDiv = document.getElementById('chat');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const fileContextDisplay = document.getElementById('fileContextDisplay');
+
+        if (loadingMessage) {
+          chatDiv.removeChild(loadingMessage);
+        }
+
+        // Update file context display if provided
+        if (message.command === 'fileContext' && message.file) {
+          fileContextDisplay.textContent = 'Current file: ' + message.file;
+        }
+
+        // Append bot response or error
+        if (message.command === 'answer') {
+          const botMessage = document.createElement('div');
+          botMessage.classList.add('message', 'bot');
+          botMessage.innerHTML = marked.parse(message.text);
+          chatDiv.appendChild(botMessage);
+          chatDiv.scrollTop = chatDiv.scrollHeight;
+        } else if (message.command === 'error') {
+          const errorMessage = document.createElement('div');
+          errorMessage.classList.add('message', 'error');
+          errorMessage.innerHTML = '<strong>Error:</strong><br/>' + message.text;
+          chatDiv.appendChild(errorMessage);
+          chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+      });
+    </script>
+  </body>
+</html>

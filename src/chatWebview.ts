@@ -1,12 +1,14 @@
 import { window, ViewColumn, WebviewPanel, ExtensionContext } from 'vscode';
 import OpenAI from 'openai';
+import { readFileSync } from 'fs';
+import * as path from 'path';
 
 export class ChatWebview {
   private panel: WebviewPanel | undefined;
 
   constructor(private context: ExtensionContext) {}
 
-  public async show(scriptContent: string) {
+  public async show(scriptContent: string, scriptFileName: string) {
     // Dispose any existing panel
     if (this.panel) {
       this.panel.dispose();
@@ -61,59 +63,46 @@ export class ChatWebview {
         await this.context.secrets.store('openaiApiKey', newApiKey);
         window.showInformationMessage('API key updated successfully.');
         this.panel?.webview.postMessage({ command: 'keyUpdateResult', text: 'API key updated successfully.' });
+      } else if (message.command === 'requestFileContext') {
+        // Handle file context request
+        if (scriptFileName) {
+          const fileName = path.basename(scriptFileName);
+          // window.showInformationMessage(`File context requested: ${fileName}`);
+          this.panel?.webview.postMessage({ command: 'fileContext', file: fileName });
+        } else {
+          this.panel?.webview.postMessage({ command: 'fileContext', file: 'No active editor found.' });
+        }
       }
     });
   }
 
+  /**
+   * Loads the HTML content for the webview from a file.
+   *
+   * @param fileName The name of the HTML file to load.
+   * @returns The HTML content as a string.
+   */
+  private getHtmlForWebviewFromFile(fileName: string): string {
+    // Get the path to the HTML file in the extension's URI
+    const filePath = path.join(this.context.extensionPath, 'src', fileName);
+    // Read the file content and return it as a string
+    try {
+      const htmlContent = readFileSync(filePath, 'utf8');
+      return htmlContent;
+    } catch (error) {
+      return '<h1>Error loading chat interface</h1><p>' + error + '</p>';
+    }
+  }
+
+  /**
+   * Returns the HTML content for the webview.
+   *
+   * @returns The HTML content as a string.
+   */
   private getHtmlForWebview(): string {
-    // Inline HTML that builds the chat UI with a "Send" button (always enabled)
-    // and an "Update API Key" button.
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Chat</title>
-        <!-- Load marked.js for markdown parsing -->
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-      </head>
-      <body>
-        <h2>Generate Coding Questions</h2>
-        <div id="chat" style="height:300px; overflow:auto; border:1px solid #ccc; padding:10px;"></div>
-        <input id="userInput" type="text" placeholder="Ask something..." style="width:80%;" />
-        <button id="sendButton" onclick="sendMessage()">Send</button>
-        <button id="updateKeyButton" onclick="updateKey()">Update API Key</button>
-        <script>
-          const vscode = acquireVsCodeApi();
-          function sendMessage() {
-            const input = document.getElementById('userInput');
-            vscode.postMessage({ command: 'ask', text: input.value });
-            input.value = '';
-          }
-          function updateKey() {
-            vscode.postMessage({ command: 'updateKey' });
-          }
-          window.addEventListener('message', event => {
-            const message = event.data;
-            if (message.command === 'answer') {
-              // Convert Markdown to HTML using marked
-              const htmlContent = marked.parse(message.text);
-              const chatDiv = document.getElementById('chat');
-              chatDiv.innerHTML += '<div><strong>Questions:</strong><br/>' + htmlContent + '</div>';
-            }
-            if (message.command === 'error') {
-              const chatDiv = document.getElementById('chat');
-              chatDiv.innerHTML += '<p><em><strong>Error:</strong><br/>' + message.text + '</em></p>';
-            }
-            if (message.command === 'keyUpdateResult') {
-              const chatDiv = document.getElementById('chat');
-              chatDiv.innerHTML += '<p><em>' + message.text + '</em></p>';
-            }
-          });
-        </script>
-      </body>
-      </html>
-    `;
+    // Load Chat-AI-Interface.html from the extension's URI
+    const scriptHTML = this.getHtmlForWebviewFromFile('Chat-AI-Interface.html');
+    return scriptHTML;
   }
 
   /**
@@ -131,7 +120,8 @@ export class ChatWebview {
     ==================
     ${scriptContent}
     ==================
-    ${userPrompt ? userPrompt : 'Generate some coding questions that test understanding of the script.'}
+    ${userPrompt?.trim() || ''}
+    Generate some coding questions that test understanding of the script.
     `;
 
     try {
