@@ -5,10 +5,11 @@ import * as path from 'path';
 
 export class ChatWebview {
   private panel: WebviewPanel | undefined;
+  private conversationHistory: { role: 'user' | 'system'; content: string }[] = [];
 
   constructor(private context: ExtensionContext) {}
 
-  public async show(scriptContent: string, scriptFileName: string) {
+  public async show(highlightedText: string, scriptContent: string, scriptFileName: string) {
     // Dispose any existing panel
     if (this.panel) {
       this.panel.dispose();
@@ -38,8 +39,15 @@ export class ChatWebview {
           // Save the API key for later use
           await this.context.secrets.store('openaiApiKey', apiKey);
         }
+
         // Generate questions using the modern OpenAI API call
-        const answer = await this.generateQuestions(apiKey, scriptContent, message.text);
+        const answer = await this.generateQuestions(
+          apiKey,
+          highlightedText,
+          scriptContent,
+          message.text,
+          message.includeContext,
+        );
 
         // Send error message to the webview if the API key is invalid
         if (answer.includes('Error generating questions:')) {
@@ -113,16 +121,36 @@ export class ChatWebview {
    * @param userPrompt Additional user text.
    * @returns A promise that resolves with the generated questions.
    */
-  private async generateQuestions(apiKey: string, scriptContent: string, userPrompt: string): Promise<string> {
-    // Build a prompt that includes the script content and the user's additional message.
-    const prompt = `
-    Given the following script:
-    ==================
-    ${scriptContent}
-    ==================
-    ${userPrompt?.trim() || ''}
-    Generate some coding questions that test understanding of the script.
+  private async generateQuestions(
+    apiKey: string,
+    highlightedText: string,
+    scriptContent: string,
+    userPrompt: string,
+    includeContext: boolean,
+  ): Promise<string> {
+    // Build the prompt based on whether full context is desired
+    let prompt: string;
+
+    if (this.conversationHistory.length === 0) {
+      prompt = `
+      Given the following script:
+      ==================
+      ${highlightedText || scriptContent}
+      ==================
+      ${includeContext && highlightedText ? 'Context: ' + scriptContent : ''}
+      ${userPrompt.trim()}
+      Generate coding questions that test understanding of the script.
     `;
+    } else {
+      prompt = userPrompt.trim();
+    }
+
+    if (includeContext && this.conversationHistory.length > 0) {
+      prompt = `Context: ${scriptContent}\n${prompt}`;
+    }
+
+    // Update conversation history with the new user message
+    this.conversationHistory.push({ role: 'user', content: prompt });
 
     try {
       // Create a new OpenAI client instance with the API key.
@@ -133,15 +161,15 @@ export class ChatWebview {
       // Call the chat completions endpoint using the new API format.
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini', // Replace with your desired model
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt },
-        ],
+        messages: [{ role: 'system', content: 'You are a helpful assistant.' }, ...this.conversationHistory],
         store: true,
       });
 
       // Return the generated message (if available)
       const generatedMessage = completion.choices[0].message?.content;
+      if (generatedMessage) {
+        this.conversationHistory.push({ role: 'system', content: generatedMessage.trim() });
+      }
       return generatedMessage ? generatedMessage.trim() : 'No response received.';
     } catch (error: any) {
       //   console.error(error);

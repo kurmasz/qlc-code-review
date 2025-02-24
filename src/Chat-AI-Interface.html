@@ -182,8 +182,12 @@
         chatDiv.appendChild(loadingMessage);
         chatDiv.scrollTop = chatDiv.scrollHeight;
 
+        // Include file context if checkbox is checked
+        const includeContext = document.getElementById('includeFileContext').checked;
+
         // Send user message to the extension
-        vscode.postMessage({ command: 'ask', text: input.value.trim() });
+        vscode.postMessage({ command: 'ask', text: input.value.trim(), includeContext });
+        // Clear input
         input.value = '';
       }
 
@@ -200,7 +204,12 @@
 
         // Update file context display if provided
         if (message.command === 'fileContext' && message.file) {
-          fileContextDisplay.textContent = 'Current file: ' + message.file;
+          fileContextDisplay.innerHTML = `
+          <span>Current file: ${message.file}</span>
+          <label>
+            <input type="checkbox" id="includeFileContext" />
+            Include full file context
+          </label>`;
         }
 
         // Append bot response or error

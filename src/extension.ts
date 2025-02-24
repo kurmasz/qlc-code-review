@@ -53,8 +53,9 @@ export function activate(context: ExtensionContext) {
     }
     const scriptContent = editor.document.getText();
     const scriptFileName = editor.document.fileName;
+    const highlightedText = editor.document.getText(editor.selection);
     // Show the chat webview with the script content in context
-    chatWebview.show(scriptContent, scriptFileName);
+    chatWebview.show(highlightedText, scriptContent, scriptFileName);
   });
 
   // Register the new command
