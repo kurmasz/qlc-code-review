@@ -1,6 +1,7 @@
 import { window, ViewColumn, ExtensionContext, workspace, Range, WebviewPanel, Uri, TextEditor } from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { decode } from 'js-base64'; // For displaying code in the webview
 
 import { ReviewCommentService } from './review-comment';
 import { createCommentFromObject, CsvEntry, CsvStructure } from './model';
@@ -19,6 +20,8 @@ export class WebViewComponent {
   private panel: WebviewPanel | null = null;
   /** Reference to the working editor during note edition */
   private editor: TextEditor | null = null;
+  /** Store the code excerpt for the current comment */
+  private codeExcerpt: string = '';
 
   /**
    * Show the comment edition panel
@@ -126,6 +129,9 @@ export class WebViewComponent {
     const encodedSnippet = getCodeForFile(data.filename, data.lines, this.context.extensionPath);
     data.code = encodedSnippet;
 
+    // Decode the snippet for display in the webview
+    this.codeExcerpt = decode(encodedSnippet); // Decode the snippet for display
+
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
       (message) => {
@@ -195,8 +201,21 @@ export class WebViewComponent {
       .map((range) => `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`)
       .join('|');
     const encodedSnippet = getCodeForFile(filename, lineRanges, this.context.extensionPath);
+    const workspaceFolders = workspace.workspaceFolders;
+    let relativePath = path.basename(filename);
 
-    panel.webview.postMessage({ cachedComments: this.getCachedComments() }); // send cached comments to webview
+    // Update code excerpt to include the encoded snippet
+    this.codeExcerpt = decode(encodedSnippet); // Decode the snippet for display
+
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const workspacePath = workspaceFolders[0].uri.fsPath;
+      relativePath = path.relative(workspacePath, filename);
+    }
+
+    panel.webview.postMessage({
+      cachedComments: this.getCachedComments(),
+      comment: { title: relativePath, code: this.codeExcerpt },
+    }); // send cached comments to webview
 
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(

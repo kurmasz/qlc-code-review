@@ -32,6 +32,7 @@
 
       form.note-form {
         padding-top: 20px;
+        padding-bottom: 20px;
       }
 
       .action-btn {
@@ -103,7 +104,7 @@
         margin-top: 10px;
         margin-left: 10px;
         background-color: grey;
-        vertical-align: middle;
+        /* vertical-align: middle; */
         border-radius: 100%;
         display: block;
         user-select: none;
@@ -136,10 +137,15 @@
         display: flex;
       }
 
-      .col-right {
+      .col-left {
+        flex: 1;
+        padding-right: 20px;
+      }
+
+      /* .col-right {
         padding-left: 20px;
         justify-self: center;
-      }
+      } */
 
       /* Style for the suggestions dropdown */
       .question-container,
@@ -175,6 +181,29 @@
       #answer-suggestions li:hover {
         background-color: #f0f0f0; /* Highlight on hover */
       }
+
+      /* Styling for toggle labels and buttons */
+      .toggle-label {
+        display: flex;
+        align-items: center;
+      }
+      .toggle-btn {
+        border: none;
+        background: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #f0f0f0;
+      }
+
+      /* Containers for toggled textareas */
+      .answer-container {
+        display: none;
+      }
+      .code-container {
+        display: none;
+        margin: 0;
+        padding: 0;
+      }
     </style>
   </head>
 
@@ -186,9 +215,9 @@
     <form class="note-form">
       <div class="form-container">
         <div class="col-left">
-          <label for="title">Title</label>
+          <!-- <label for="title">Title</label>
 
-          <input id="title" name="title" type="text" placeholder="A short description (e.g. 'Method too complex')" />
+          <input id="title" name="title" type="text" placeholder="A short description (e.g. 'Method too complex')" /> -->
 
           <label for="category">Category</label>
 
@@ -210,8 +239,24 @@
             <!-- Suggestions for comment field -->
           </div>
 
-          <label for="additional">Answer</label>
+          <!-- <label for="additional">Answer</label> -->
 
+          <!-- <div class="answer-container">
+            <textarea
+              id="additional"
+              name="additional"
+              placeholder="An answer to the question (e.g. 'This method is used to ...')"
+              rows="5"
+            ></textarea>
+            <ul id="answer-suggestions"></ul> -->
+          <!-- Suggestions for answer field -->
+          <!-- </div> -->
+
+          <!-- Toggle for answer field -->
+          <label for="additional" class="toggle-label">
+            <span>Answer</span>
+            <button type="button" class="toggle-btn" onclick="toggleTextarea('answer')">▾</button>
+          </label>
           <div class="answer-container">
             <textarea
               id="additional"
@@ -221,6 +266,24 @@
             ></textarea>
             <ul id="answer-suggestions"></ul>
             <!-- Suggestions for answer field -->
+          </div>
+
+          <!-- New field for displaying code snippet -->
+          <label for="code" class="toggle-label">
+            <span>Code Excerpt</span>
+            <button type="button" class="toggle-btn" onclick="toggleTextarea('code')">▾</button>
+          </label>
+          <div class="code-container">
+            <textarea
+              id="code"
+              name="code"
+              placeholder="Paste or view the code snippet here"
+              rows="10"
+              readonly
+              aria-label="Code Excerpt"
+            >
+            CODE_EXCERPT
+            </textarea>
           </div>
         </div>
 
@@ -305,6 +368,20 @@
   <script>
     const vscode = acquireVsCodeApi();
     let cachedComments; // Default value
+    let currentFilePath = ''; // Will hold the relative file path
+
+    // Function to toggle the visibility of the textarea and change the button text
+    function toggleTextarea(id) {
+      const container = document.querySelector(`.${id}-container`); // Select the container for the textarea
+      const button = container.previousElementSibling.querySelector('.toggle-btn');
+      if (container.style.display === 'none' || container.style.display === '') {
+        container.style.display = 'block';
+        button.innerText = '▴'; // Change to up arrow
+      } else {
+        container.style.display = 'none';
+        button.innerText = '▾'; // Change to down arrow
+      }
+    }
 
     // Generalized function to filter suggestions
     function filterSuggestions(input, cachedData, type, suggestionListId, inputFieldId) {
@@ -383,10 +460,15 @@
       // Update the cached comments
       cachedComments = event.data.cachedComments;
 
+      // Update the current file path
+      currentFilePath = event.data.comment.title || ''; // Use the relative file path
+
+      // Update the code excerpt
+      document.getElementById('code').value = event.data.comment.code || '';
       document.getElementById('delete-button').style.visibility = 'visible';
       document.getElementById('add').innerHTML = 'Update';
       document.getElementById('add').disabled = false;
-      document.getElementById('title').value = event.data.comment.title || '';
+      // document.getElementById('title').value = event.data.comment.title || ''; // Not used in the current form
       document.getElementById('comment').value = event.data.comment.comment || '';
       document.getElementById('additional').value = event.data.comment.additional || '';
       document.getElementById('category').value = event.data.comment.category;
@@ -434,7 +516,7 @@
     document.getElementById('comment').focus();
 
     function addNote() {
-      const title = document.getElementById('title').value;
+      // const title = document.getElementById('title').value; // Not used in the current form
       const comment = document.getElementById('comment').value;
       const trafficLightEl = document.querySelector('input[name=traffic-light-color]:checked');
       const priority = trafficLightEl ? trafficLightEl.value : 0;
@@ -447,7 +529,8 @@
         filename: '',
         url: '',
         lines: '',
-        title,
+        title: currentFilePath, // Use the relative file path
+        // title, // Not used in the current form
         comment,
         priority: Number(priority),
         category,
