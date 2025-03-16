@@ -123,7 +123,19 @@ export class WebViewComponent {
     // panel.webview.html = fs.readFileSync(pathUri.fsPath, 'utf8');
     // const priorities = workspace.getConfiguration().get('code-review.priorities') as string[];
     data = CsvStructure.finalizeParse(data);
-    panel.webview.postMessage({ comment: { ...data }, cachedComments: this.getCachedComments() }); // send data, cached comments to webview
+
+    // Update the code excerpt to include the encoded snippet
+    // Send the comment data to the webview
+    if (data.code) {
+      // Decode the code snippet for display in the webview
+      const decodedSnippet = decode(data.code);
+      this.codeExcerpt = decodedSnippet;
+    }
+
+    panel.webview.postMessage({
+      comment: { ...data, code: this.codeExcerpt },
+      cachedComments: this.getCachedComments(),
+    }); // send data, cached comments to webview
 
     // Add logic to include encoded code snippet during editing
     const encodedSnippet = getCodeForFile(data.filename, data.lines, this.context.extensionPath);
