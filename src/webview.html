@@ -192,7 +192,14 @@
         background: none;
         font-size: 16px;
         cursor: pointer;
-        color: #f0f0f0;
+      }
+      /* Adjust button color for light mode */
+      button.toggle-btn.vscode-light {
+        color: black;
+      }
+      /* Adjust button color for dark mode */
+      button.toggle-btn.vscode-dark {
+        color: white;
       }
 
       /* Containers for toggled textareas */
@@ -369,6 +376,23 @@
     const vscode = acquireVsCodeApi();
     let cachedComments; // Default value
     let currentFilePath = ''; // Will hold the relative file path
+
+    // Function to toggle class for light and dark modes
+    function toggleClassForMode(element) {
+      if (document.body.classList.contains('vscode-light')) {
+        element.classList.add('vscode-light');
+        element.classList.remove('vscode-dark');
+      } else {
+        element.classList.remove('vscode-light');
+        element.classList.add('vscode-dark');
+      }
+    }
+
+    // Apply the class to the button
+    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    toggleButtons.forEach((button) => {
+      toggleClassForMode(button);
+    });
 
     // Function to toggle the visibility of the textarea and change the button text
     function toggleTextarea(id) {
