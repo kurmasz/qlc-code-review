@@ -245,6 +245,11 @@
             <ul id="comment-suggestions"></ul>
             <!-- Suggestions for comment field -->
           </div>
+          <!-- Added Suggest OpenAI Questions button -->
+          <button id="suggest-btn" type="button" class="action-btn secondary" style="margin-top: 8px">
+            Suggest OpenAI Questions
+          </button>
+          <!-- End of added Suggest button -->
 
           <!-- <label for="additional">Answer</label> -->
 
@@ -480,26 +485,56 @@
       }
     });
 
+    // Added event listener for Suggest Questions button click
+    const suggestBtn = document.getElementById('suggest-btn');
+
+    // Variables for the loading animation
+    suggestBtn.addEventListener('click', () => {
+      suggestBtn.innerHTML = 'Loading...';
+      suggestBtn.disabled = true;
+      suggestBtn.style.cursor = 'not-allowed';
+      // Send a message to the extension to suggest questions
+      vscode.postMessage({
+        command: 'suggestQuestions',
+        includeContext: true,
+      });
+    });
+
     window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (message.command === 'showSuggestions') {
+        // Reset the button text and enable it
+        suggestBtn.innerHTML = 'Suggest OpenAI Questions';
+        suggestBtn.disabled = false;
+        suggestBtn.style.cursor = 'pointer';
+
+        // Render suggestions in a dropdown or list
+        const suggestionsUl = document.getElementById('comment-suggestions');
+        suggestionsUl.innerHTML = message.suggestions
+          .map((q) => `<li onclick="applySuggestion('${q}')">${q}</li>`)
+          .join('');
+        suggestionsUl.style.display = 'block';
+        return;
+      }
       // Update the cached comments
-      cachedComments = event.data.cachedComments;
+      cachedComments = message.cachedComments;
 
       // Update the current file path
-      currentFilePath = event.data.comment.title || ''; // Use the relative file path
+      currentFilePath = message.comment.title || ''; // Use the relative file path
 
       // Update the code excerpt
-      document.getElementById('code').value = event.data.comment.code || '';
+      document.getElementById('code').value = message.comment.codeExcerpt || '';
       document.getElementById('delete-button').style.visibility = 'visible';
       document.getElementById('add').innerHTML = 'Update';
       document.getElementById('add').disabled = false;
       // document.getElementById('title').value = event.data.comment.title || ''; // Not used in the current form
-      document.getElementById('comment').value = event.data.comment.comment || '';
-      document.getElementById('additional').value = event.data.comment.additional || '';
-      document.getElementById('category').value = event.data.comment.category;
-      document.getElementById('private').checked = Number(event.data.comment.private) !== 0;
+      document.getElementById('comment').value = message.comment.comment || '';
+      document.getElementById('additional').value = message.comment.additional || '';
+      document.getElementById('category').value = message.comment.category;
+      document.getElementById('private').checked = Number(message.comment.private) !== 0;
 
-      if (event.data.comment.priority) {
-        document.getElementById('prio-' + event.data.comment.priority).checked = true;
+      if (message.comment.priority) {
+        document.getElementById('prio-' + message.comment.priority).checked = true;
       }
     });
 
@@ -538,6 +573,12 @@
 
     // Give focus to the comment to allow immediate typing.
     document.getElementById('comment').focus();
+
+    // Function to apply a suggestion to the comment field
+    function applySuggestion(suggestion) {
+      document.getElementById('comment').value = suggestion;
+      document.getElementById('comment-suggestions').style.display = 'none';
+    }
 
     function addNote() {
       // const title = document.getElementById('title').value; // Not used in the current form

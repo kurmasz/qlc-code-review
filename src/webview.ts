@@ -2,6 +2,7 @@ import { window, ViewColumn, ExtensionContext, workspace, Range, WebviewPanel, U
 import * as path from 'path';
 import * as fs from 'fs';
 import { decode } from 'js-base64'; // For displaying code in the webview
+import OpenAI from 'openai'; // For generating code snippets questions
 
 import { ReviewCommentService } from './review-comment';
 import { createCommentFromObject, CsvEntry, CsvStructure } from './model';
@@ -133,16 +134,16 @@ export class WebViewComponent {
     }
 
     panel.webview.postMessage({
-      comment: { ...data, code: this.codeExcerpt },
+      comment: { ...data, codeExcerpt: this.codeExcerpt || '' },
       cachedComments: this.getCachedComments(),
     }); // send data, cached comments to webview
 
     // Add logic to include encoded code snippet during editing
-    const encodedSnippet = getCodeForFile(data.filename, data.lines, this.context.extensionPath);
-    data.code = encodedSnippet;
+    // const encodedSnippet = getCodeForFile(data.filename, data.lines, this.context.extensionPath);
+    // data.code = encodedSnippet;
 
     // Decode the snippet for display in the webview
-    this.codeExcerpt = decode(encodedSnippet); // Decode the snippet for display
+    // this.codeExcerpt = decode(encodedSnippet); // Decode the snippet for display
 
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
@@ -158,7 +159,7 @@ export class WebViewComponent {
               category: formData.category || '',
               priority: formData.priority || 0,
               private: formData.private || 0,
-              code: encodedSnippet, // Include encoded snippet
+              // code: encodedSnippet, // Include encoded snippet
             };
             commentService.updateComment(newEntry, this.getWorkingEditor());
 
@@ -185,6 +186,10 @@ export class WebViewComponent {
                   this.editComment(commentService, selections, data);
                 }
               });
+            break;
+
+          case 'suggestQuestions':
+            this.handleSuggestQuestions(panel);
             break;
         }
       },
@@ -226,7 +231,7 @@ export class WebViewComponent {
 
     panel.webview.postMessage({
       cachedComments: this.getCachedComments(),
-      comment: { title: relativePath, code: this.codeExcerpt },
+      comment: { title: relativePath, codeExcerpt: this.codeExcerpt },
     }); // send cached comments to webview
 
     // Handle messages from the webview
@@ -242,13 +247,19 @@ export class WebViewComponent {
             if (newComment.private) {
               commentService.cacheComment(newComment, this.context);
             }
+            panel.dispose();
             break;
 
           case 'cancel':
+            panel.dispose();
+            break;
+
+          case 'suggestQuestions':
+            this.handleSuggestQuestions(panel);
             break;
         }
 
-        panel.dispose();
+        // panel.dispose();
       },
       undefined,
       this.context.subscriptions,
@@ -259,6 +270,64 @@ export class WebViewComponent {
       decoration.dispose();
       this.disposeWorkingEditor();
     });
+  }
+
+  /**
+   *
+   * Handle the suggest questions command from the webview panel
+   * @param panel - The webview panel to handle the suggest questions command
+   * @returns
+   */
+  private async handleSuggestQuestions(panel: WebviewPanel): Promise<void> {
+    // Get the OpenAI API key from the secrets
+    let apiKey = await this.context.secrets.get('openaiApiKey');
+    // Prompt the user for the API key if not already saved
+    if (!apiKey) {
+      apiKey = await window.showInputBox({
+        prompt: 'Please enter your OpenAI API Key',
+        placeHolder: 'YOUR_OPENAI_API_KEY',
+        password: true,
+      });
+      if (!apiKey) {
+        window.showErrorMessage('No API key provided.');
+        return;
+      }
+      // Save the API key for later use
+      await this.context.secrets.store('openaiApiKey', apiKey);
+    }
+    // Create the prompt for the OpenAI API
+    const defaultPrompt = 'Generate code review questions to test understanding of the following code snippet:';
+    const fullPrompt = `${defaultPrompt}\n\n${this.codeExcerpt}`;
+    try {
+      // Generate questions using the OpenAI API
+      const openai = new OpenAI({
+        apiKey: apiKey.trim(),
+      });
+      // Call the chat endpoint to generate questions
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant that generates code review questions.' },
+          { role: 'user', content: fullPrompt },
+        ],
+      });
+
+      // Extract the generated suggestions from the completion
+      const generatedText = completion.choices[0].message?.content || 'No suggestions generated.';
+
+      // Split the generated suggestions into an array of strings
+      // and remove the numbering on each line
+      const suggestions = generatedText
+        .split('\n')
+        .map((line) => line.replace(/^\d+\.\s/, ''))
+        .filter((s) => s.trim() !== '');
+      panel.webview.postMessage({ command: 'showSuggestions', suggestions });
+    } catch (error: any) {
+      panel.webview.postMessage({
+        command: 'showSuggestions',
+        suggestions: [`Error generating suggestions: ${error.message}`],
+      });
+    }
   }
 
   private createWebView(title: string): WebviewPanel {
