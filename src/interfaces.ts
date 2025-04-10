@@ -47,4 +47,6 @@ export interface ExportMap {
   handleEnd(outputFile: string, rows: CsvEntry[], template?: Uri): void;
 }
 
-export type ExportFormat = 'html' | 'markdown' | 'gitlab' | 'github' | 'jira' | 'json' | 'questions-pdf';
+// Remove the questions-pdf export format
+// export type ExportFormat = 'html' | 'markdown' | 'gitlab' | 'github' | 'jira' | 'json' | 'questions-pdf';
+export type ExportFormat = 'html' | 'markdown' | 'gitlab' | 'github' | 'jira' | 'json';

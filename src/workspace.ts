@@ -54,11 +54,11 @@ export class WorkspaceContext {
   private setReviewFileSelectedCsvRegistration!: Disposable;
   private deleteNoteRegistration!: Disposable;
   private exportAsHtmlWithDefaultTemplateRegistration!: Disposable;
-  private exportAsHtmlWithQuestionTemplateRegistration!: Disposable;
+  private exportAsHtmlWithQuestionTemplateRegistration!: Disposable; // Delete this in the future
   private exportAsHtmlWithHandlebarsTemplateRegistration!: Disposable;
   private exportAsMarkdownWithDefaultTemplateRegistration!: Disposable;
   private exportAsMarkdownWithHandlebarsTemplateRegistration!: Disposable;
-  private exportAsQuestionsPdfRegistration!: Disposable;
+  private exportAsQuestionsMarkdownRegistration!: Disposable; // Updated from exportAsQuestionsPdfRegistration
   private exportAsGitLabImportableCsvRegistration!: Disposable;
   private exportAsGitHubImportableCsvRegistration!: Disposable;
   private exportAsJiraImportableCsvRegistration!: Disposable;
@@ -210,6 +210,7 @@ export class WorkspaceContext {
       : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template.default.hbs')));
   }
 
+  // Delete this in the future
   getQuestionTemplate(): Uri {
     const defaultConfigurationTemplatePath = workspace
       .getConfiguration()
@@ -218,6 +219,7 @@ export class WorkspaceContext {
       ? Uri.file(defaultConfigurationTemplatePath)
       : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template-question.hbs')));
   }
+  // End of deletion
 
   getDefaultMarkdownTemplate(): Uri {
     const defaultMarkdownTemplatePath = workspace
@@ -231,7 +233,7 @@ export class WorkspaceContext {
   getDefaultQuestionMarkdownTemplate(): Uri {
     const defaultMarkdownTemplatePath = workspace
       .getConfiguration()
-      .get('code-review.defaultStudentQuestionMarkdownTemplatePath') as string;
+      .get('code-review.defaultStudentQuestionMarkdownTemplatePath') as string; // TODO: Possibly rename this setting
     return defaultMarkdownTemplatePath
       ? Uri.file(defaultMarkdownTemplatePath)
       : Uri.parse(this.context.asAbsolutePath(path.join('dist', 'template-markdown-student-questions.default.hbs')));
@@ -342,6 +344,7 @@ export class WorkspaceContext {
       },
     );
 
+    // Delete this in the future
     /**
      * allow users to export the report as HTML using the questions handlebars template
      */
@@ -351,6 +354,7 @@ export class WorkspaceContext {
         this.exportFactory.exportForFormat('html', this.getQuestionTemplate());
       },
     );
+    // End of deletion
 
     /**
      * allow users to export the report as HTML using a specific handlebars template
@@ -405,7 +409,7 @@ export class WorkspaceContext {
           })
           .then((files) => {
             const template = files?.length ? files[0] : undefined;
-            this.exportFactory.exportForFormat('markdown', template ?? this.defaultTemplate);
+            this.exportFactory.exportForFormat('markdown', template ?? this.getDefaultMarkdownTemplate());
           });
       },
     );
@@ -413,9 +417,16 @@ export class WorkspaceContext {
     /**
      * allow users to export student questions as PDF
      */
-    this.exportAsQuestionsPdfRegistration = commands.registerCommand('codeReview.exportAsQuestionsPdf', () => {
-      this.exportFactory.exportForFormat('questions-pdf', this.getDefaultQuestionMarkdownTemplate());
-    });
+    // Updated from exportAsQuestionsPdfRegistration
+    this.exportAsQuestionsMarkdownRegistration = commands.registerCommand(
+      'codeReview.exportAsMarkdownWithQuestionTemplate',
+      () => {
+        this.exportFactory.exportForFormat('markdown', this.getDefaultQuestionMarkdownTemplate());
+      },
+    );
+    // this.exportAsQuestionsPdfRegistration = commands.registerCommand('codeReview.exportAsQuestionsPdf', () => {
+    //   this.exportFactory.exportForFormat('questions-pdf', this.getDefaultQuestionMarkdownTemplate());
+    // });
 
     /**
      * allow users to export the report as GitLab importable CSV file
@@ -568,7 +579,7 @@ export class WorkspaceContext {
       this.exportAsHtmlWithHandlebarsTemplateRegistration,
       this.exportAsMarkdownWithDefaultTemplateRegistration,
       this.exportAsMarkdownWithHandlebarsTemplateRegistration,
-      this.exportAsQuestionsPdfRegistration,
+      this.exportAsQuestionsMarkdownRegistration, // Updated from exportAsQuestionsPdfRegistration
       this.exportAsGitLabImportableCsvRegistration,
       this.exportAsGitHubImportableCsvRegistration,
       this.exportAsJiraImportableCsvRegistration,
@@ -597,7 +608,7 @@ export class WorkspaceContext {
     this.exportAsHtmlWithHandlebarsTemplateRegistration.dispose();
     this.exportAsMarkdownWithDefaultTemplateRegistration.dispose();
     this.exportAsMarkdownWithHandlebarsTemplateRegistration.dispose();
-    this.exportAsQuestionsPdfRegistration.dispose();
+    this.exportAsQuestionsMarkdownRegistration.dispose(); // Updated from exportAsQuestionsPdfRegistration
     this.exportAsGitLabImportableCsvRegistration.dispose();
     this.exportAsGitHubImportableCsvRegistration.dispose();
     this.exportAsJiraImportableCsvRegistration.dispose();

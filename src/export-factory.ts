@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { stripIndent } from 'common-tags';
 import handlebars from 'handlebars';
-import markdownPdf from 'markdown-pdf'; // Import the markdown-pdf module
+// Remove the markdown-pdf import, does not work as expected
+// import markdownPdf from 'markdown-pdf'; // Import the markdown-pdf module
 
 import {
   workspace,
@@ -93,7 +94,7 @@ export const compare = (lhs: Model, rhs: Model): SortT => {
 export class ExportFactory {
   private groupBy: GroupBy;
   private includeCodeSelection = false;
-  private includePrivateComments = false;
+  private includePrivateComments = true; // Set to true to include private comments in the export
   private privateCommentIcon: string;
   private filterByCommit: boolean = false;
   private currentCommitId: string | null = null;
@@ -199,11 +200,21 @@ export class ExportFactory {
 
           // Helper that decodes the Base64 content to be displayed in the handlebar
           handlebars.registerHelper('codeBlock', (code: string) => decode(code));
+
+          // Allow questions to be 1-indexed instead of 0-indexed
+          handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
+
+          // Helper that grabs the language from the file extension
+          handlebars.registerHelper('getLanguage', (filename: string) => {
+            const ext = path.extname(filename);
+            return ext.substring(1) || 'bash'; // Default to 'bash' if no extension is found
+          });
+
           // compile template after helper is registered
           const templateCompiled = handlebars.compile(templateData);
           // inject data into the template
           const markdownOut = templateCompiled(reviewExportData);
-          fs.writeFileSync(outputFile, markdownOut);
+          fs.writeFileSync(outputFile, markdownOut, { flag: 'w' });
           window.showInformationMessage(`Code review file: '${outputFile}' successfully created.`);
           this.openFile(outputFile);
         },
@@ -343,56 +354,57 @@ export class ExportFactory {
         },
       },
     ],
-    [
-      'questions-pdf',
-      {
-        fileExtension: 'pdf',
-        storeOutside: true,
-        writeFileHeader: (_outputFile: string) => {
-          return;
-        },
-        handleData: (_outputFile: string, row: CsvEntry): CsvEntry => {
-          // Edit the row to include the code snippet if the option is enabled
-          // row.code = this.includeCodeSelection ? this.getCodeForFile(row.filename, row.lines) : '';
-          return row;
-        },
-        handleEnd: (outputFile: string, rows: CsvEntry[], template: Uri) => {
-          const markdownOutput = outputFile.replace('.pdf', '.md');
+    // Removing this for now, as it's not working as expected
+    // [
+    //   'questions-pdf',
+    //   {
+    //     fileExtension: 'pdf',
+    //     storeOutside: true,
+    //     writeFileHeader: (_outputFile: string) => {
+    //       return;
+    //     },
+    //     handleData: (_outputFile: string, row: CsvEntry): CsvEntry => {
+    //       // Edit the row to include the code snippet if the option is enabled
+    //       // row.code = this.includeCodeSelection ? this.getCodeForFile(row.filename, row.lines) : '';
+    //       return row;
+    //     },
+    //     handleEnd: (outputFile: string, rows: CsvEntry[], template: Uri) => {
+    //       const markdownOutput = outputFile.replace('.pdf', '.md');
 
-          try {
-            // Allow questions to be 1-indexed instead of 0-indexed
-            handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
-            // Read the template data
-            const templateData = fs.readFileSync(template.fsPath, 'utf8');
-            const templateCompiled = handlebars.compile(templateData);
+    //       try {
+    //         // Allow questions to be 1-indexed instead of 0-indexed
+    //         handlebars.registerHelper('inc', (value: string) => parseInt(value) + 1);
+    //         // Read the template data
+    //         const templateData = fs.readFileSync(template.fsPath, 'utf8');
+    //         const templateCompiled = handlebars.compile(templateData);
 
-            // Process and group rows
-            const reviewExportData: ReviewFileExportSection[] = this.groupResults(rows, this.groupBy);
-            if (this.groupBy === Group.filename) {
-              reviewExportData.forEach((group) => group.lines.sort(sortCsvEntryForLines));
-            }
+    //         // Process and group rows
+    //         const reviewExportData: ReviewFileExportSection[] = this.groupResults(rows, this.groupBy);
+    //         if (this.groupBy === Group.filename) {
+    //           reviewExportData.forEach((group) => group.lines.sort(sortCsvEntryForLines));
+    //         }
 
-            // Decode encoded codeblock and compile Markdown using Handlebars
-            handlebars.registerHelper('codeBlock', (code: string) => decode(code));
-            const markdownOut = templateCompiled(reviewExportData);
+    //         // Decode encoded codeblock and compile Markdown using Handlebars
+    //         handlebars.registerHelper('codeBlock', (code: string) => decode(code));
+    //         const markdownOut = templateCompiled(reviewExportData);
 
-            // Write Markdown output file
-            fs.writeFileSync(markdownOutput, markdownOut);
-            window.showInformationMessage(`Markdown file: '${markdownOutput}' successfully created.`);
+    //         // Write Markdown output file
+    //         fs.writeFileSync(markdownOutput, markdownOut);
+    //         window.showInformationMessage(`Markdown file: '${markdownOutput}' successfully created.`);
 
-            // Convert Markdown to PDF
-            // fs.createReadStream(markdownOutput).pipe(markdownPdf()).pipe(fs.createWriteStream(outputFile))
-            markdownPdf()
-              .from(markdownOutput)
-              .to(outputFile, () => {
-                window.showInformationMessage(`PDF file: '${outputFile}' successfully created.`);
-              });
-          } catch (error: any) {
-            window.showErrorMessage(`Failed to export to PDF: ${error.message}`);
-          }
-        },
-      },
-    ],
+    //         // Convert Markdown to PDF
+    //         // fs.createReadStream(markdownOutput).pipe(markdownPdf()).pipe(fs.createWriteStream(outputFile))
+    //         markdownPdf()
+    //           .from(markdownOutput)
+    //           .to(outputFile, () => {
+    //             window.showInformationMessage(`PDF file: '${outputFile}' successfully created.`);
+    //           });
+    //       } catch (error: any) {
+    //         window.showErrorMessage(`Failed to export to PDF: ${error.message}`);
+    //       }
+    //     },
+    //   },
+    // ],
   ]);
 
   /**
@@ -433,18 +445,29 @@ export class ExportFactory {
 
     const data: CsvEntry[] = [];
     parseFile(this.absoluteFilePath, { delimiter: ',', ignoreEmpty: true, headers: true })
-      .on('error', this.handleError)
+      .on('error', (error: any) => window.showErrorMessage(error))
       .on('data', (comment: CsvEntry) => {
         comment = CsvStructure.finalizeParse(comment);
 
         if (this.isCommentEligible(comment)) {
-          if (this.includePrivateComments || comment.private === 0) {
-            if (exporter?.storeOutside) {
-              const tmp = exporter.handleData(outputFile, comment);
-              data.push(tmp);
-            }
-            exporter?.handleData(outputFile, comment);
+          if (exporter?.storeOutside) {
+            const tmp = exporter.handleData(outputFile, comment);
+            data.push(tmp);
           }
+          exporter?.handleData(outputFile, comment);
+
+          // Since private no longer represents public/private,
+          // but instead indicates whether the comment can be cached locally or not.
+          // In future, rename this property to something more appropriate.
+
+          // if (this.includePrivateComments || comment.private === 0) {
+
+          //   if (exporter?.storeOutside) {
+          //     const tmp = exporter.handleData(outputFile, comment);
+          //     data.push(tmp);
+          //   }
+          //   exporter?.handleData(outputFile, comment);
+          // }
         }
       })
       .on('end', (_rows: number) => {
@@ -532,6 +555,7 @@ export class ExportFactory {
       parseFile(this.absoluteFilePath, { delimiter: ',', ignoreEmpty: true, headers: true })
         .on('error', () => this.handleError)
         .on('data', (row: CsvEntry) => {
+          window.setStatusBarMessage(`Loading comment: ${row}`, 1000);
           if (this.isCommentEligible(row)) {
             entries.push(row);
           }
@@ -633,7 +657,8 @@ export class ExportFactory {
   }
 
   private openFile(outputFile: string) {
-    const document: Uri = Uri.parse(outputFile);
+    // const document: Uri = Uri.parse(outputFile);
+    const document = Uri.file(outputFile);
     workspace.openTextDocument(document).then((openedDocument: TextDocument) => {
       window.showTextDocument(openedDocument, { viewColumn: ViewColumn.Beside });
     });

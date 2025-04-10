@@ -73,8 +73,8 @@
         "title": "Code Review: Export as Markdown with Handlebars template"
       },
       {
-        "command": "codeReview.exportAsQuestionsPdf",
-        "title": "Code Review: Export as PDF with question template"
+        "command": "codeReview.exportAsMarkdownWithQuestionTemplate",
+        "title": "Code Review: Export as Markdown with questions template"
       },
       {
         "command": "codeReview.exportAsGitLabImportableCsv",
@@ -335,7 +335,7 @@
         "code-review.defaultStudentQuestionMarkdownTemplatePath": {
           "type": "string",
           "title": "The path to a Handlebars template to be used for Markdown student question export",
-          "description": "The template is used when choosing 'Export as PDF with question template' extension command.",
+          "description": "The template is used when choosing 'Export as markdown with question template' extension command.",
           "default": ""
         },
         "code-review.priorities": {
@@ -510,7 +510,6 @@
     "@types/glob": "^7.2.0",
     "@types/handlebars": "^4.1.0",
     "@types/js-base64": "^3.3.1",
-    "@types/markdown-pdf": "^9.0.5",
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.59.0",
@@ -546,7 +545,6 @@
     "git-commit-id": "^2.0.1",
     "handlebars": "^4.7.7",
     "js-base64": "^3.7.2",
-    "markdown-pdf": "^11.0.0",
     "openai": "^4.82.0",
     "uuid": "^8.3.2"
   }
