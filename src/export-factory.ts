@@ -444,35 +444,58 @@ export class ExportFactory {
     exporter?.writeFileHeader(outputFile);
 
     const data: CsvEntry[] = [];
-    parseFile(this.absoluteFilePath, { delimiter: ',', ignoreEmpty: true, headers: true })
-      .on('error', (error: any) => window.showErrorMessage(error))
-      .on('data', (comment: CsvEntry) => {
-        comment = CsvStructure.finalizeParse(comment);
+    // Show the relative path of the file
+    const relativePath = path.relative(this.workspaceRoot, this.absoluteFilePath) || this.absoluteFilePath;
 
-        if (this.isCommentEligible(comment)) {
-          if (exporter?.storeOutside) {
-            const tmp = exporter.handleData(outputFile, comment);
-            data.push(tmp);
+    // Check if the file exists
+    if (!fs.existsSync(this.absoluteFilePath)) {
+      window.showErrorMessage(`File not found: '${relativePath}'`);
+      return;
+    }
+
+    // Check if the file is readable
+    try {
+      fs.accessSync(this.absoluteFilePath, fs.constants.R_OK);
+    } catch (error: any) {
+      window.showErrorMessage(`Error when reading the file: '${relativePath}'`);
+      throw error;
+    }
+
+    try {
+      parseFile(this.absoluteFilePath, { delimiter: ',', ignoreEmpty: true, headers: true })
+        .on('error', (error: any) => window.showErrorMessage(error))
+        .on('data', (comment: CsvEntry) => {
+          comment = CsvStructure.finalizeParse(comment);
+
+          if (this.isCommentEligible(comment)) {
+            if (exporter?.storeOutside) {
+              const tmp = exporter.handleData(outputFile, comment);
+              data.push(tmp);
+            }
+            exporter?.handleData(outputFile, comment);
+
+            // Since private no longer represents public/private,
+            // but instead indicates whether the comment can be cached locally or not.
+            // In future, rename this property to something more appropriate.
+
+            // if (this.includePrivateComments || comment.private === 0) {
+
+            //   if (exporter?.storeOutside) {
+            //     const tmp = exporter.handleData(outputFile, comment);
+            //     data.push(tmp);
+            //   }
+            //   exporter?.handleData(outputFile, comment);
+            // }
           }
-          exporter?.handleData(outputFile, comment);
-
-          // Since private no longer represents public/private,
-          // but instead indicates whether the comment can be cached locally or not.
-          // In future, rename this property to something more appropriate.
-
-          // if (this.includePrivateComments || comment.private === 0) {
-
-          //   if (exporter?.storeOutside) {
-          //     const tmp = exporter.handleData(outputFile, comment);
-          //     data.push(tmp);
-          //   }
-          //   exporter?.handleData(outputFile, comment);
-          // }
-        }
-      })
-      .on('end', (_rows: number) => {
-        return exporter?.handleEnd(outputFile, exporter?.storeOutside ? data : [], template);
-      });
+        })
+        .on('end', (_rows: number) => {
+          return exporter?.handleEnd(outputFile, exporter?.storeOutside ? data : [], template);
+        });
+    } catch (error: any) {
+      window.showErrorMessage(`Something went wrong: '${error.message}'`);
+      console.error(error);
+      throw error;
+    }
   }
 
   /**
