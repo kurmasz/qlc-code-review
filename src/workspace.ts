@@ -17,6 +17,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { CheckFlag, FileGenerator } from './file-generator';
 import { ReviewCommentService } from './review-comment';
+import { ChatWebview } from './chatWebview';
 import { rangesFromStringDefinition } from './utils/workspace-util';
 import { WebViewComponent } from './webview';
 import { ExportFactory } from './export-factory';
@@ -40,9 +41,11 @@ export class WorkspaceContext {
   private importFactory!: ImportFactory;
   private commentService!: ReviewCommentService;
   private webview: WebViewComponent;
+  private chatWebview: ChatWebview;
   private commentsProvider!: CommentsProvider;
   private fileWatcher!: FileSystemWatcher;
 
+  private activateChatRegistration!: Disposable;
   private openSelectionRegistration!: Disposable;
   private addNoteRegistration!: Disposable;
   private filterByCommitEnableRegistration!: Disposable;
@@ -70,6 +73,7 @@ export class WorkspaceContext {
   constructor(private context: ExtensionContext, public workspaceRoot: string) {
     // create a new file if not already exist
     this.webview = new WebViewComponent(context);
+    this.chatWebview = new ChatWebview(context);
     this.decorations = new Decorations(context);
     this.setup();
   }
@@ -240,6 +244,31 @@ export class WorkspaceContext {
   }
 
   registerCommands() {
+    // ChatGPT webview
+    this.activateChatRegistration = commands.registerCommand('codeReview.generateQuestions', async () => {
+      // For instance, use the active editor's file content:
+      const editor = window.activeTextEditor;
+      if (!editor) {
+        window.showErrorMessage('Please open a script file first.');
+        return;
+      }
+      const scriptContent = editor.document.getText();
+      const scriptFileName = editor.document.fileName;
+      const highlightedText = editor.document.getText(editor.selection);
+
+      // Create the CSV file if it doesn't exist
+      if (!this.generator.create()) {
+        return;
+      }
+
+      // Show the chat webview with the script content in context
+      this.chatWebview.show(highlightedText, scriptContent, scriptFileName, this.commentService);
+
+      // Add decorations to the active editor
+      this.commentsProvider.refresh();
+      this.updateDecorations();
+    });
+
     this.openSelectionRegistration = commands.registerCommand(
       'codeReview.openSelection',
       (fileSection: ReviewFileExportSection, csvRef?: CsvEntry) => {
@@ -564,6 +593,7 @@ export class WorkspaceContext {
    */
   updateSubscriptions() {
     this.context.subscriptions.push(
+      this.activateChatRegistration,
       this.openSelectionRegistration,
       this.addNoteRegistration,
       this.deleteNoteRegistration,
@@ -593,6 +623,7 @@ export class WorkspaceContext {
    * dispose all current registrations and update the subscriptions
    */
   unregisterCommands() {
+    // this.activateChatRegistration.dispose();
     this.openSelectionRegistration.dispose();
     this.addNoteRegistration.dispose();
     this.deleteNoteRegistration.dispose();

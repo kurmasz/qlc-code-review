@@ -120,7 +120,8 @@
       #userInput:focus {
         outline: 1px solid var(--vscode-focusBorder, #007aff);
       }
-      #sendButton {
+      #sendButton,
+      #saveButton {
         background-color: #007aff;
         color: #ffffff;
         border: none;
@@ -130,6 +131,11 @@
       }
       #sendButton:hover {
         opacity: 0.9;
+      }
+
+      /* Grey out the button when disabled */
+      #saveButton:disabled {
+        opacity: 0.5;
       }
 
       /* === File Context Display (Under Input) === */
@@ -216,7 +222,68 @@
         if (message.command === 'answer') {
           const botMessage = document.createElement('div');
           botMessage.classList.add('message', 'bot');
-          botMessage.innerHTML = marked.parse(message.text);
+          const parsedQuestions = JSON.parse(message.text);
+          // Only parse the first JSON object, subsequent ones are markdown
+          // Cycle through the parsed questions parts
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            // header
+            const p = document.createElement('p');
+            p.textContent = 'Select the questions you want to save:';
+            chatDiv.appendChild(p);
+
+            // build the list
+            const ol = document.createElement('ol');
+            ol.className = 'question-list';
+            parsedQuestions.forEach((q, idx) => {
+              // Create list item with checkbox
+              const li = document.createElement('li');
+              const label = document.createElement('label');
+
+              const cb = document.createElement('input');
+              cb.type = 'checkbox';
+              cb.className = 'question-checkbox';
+              cb.value = q;
+              cb.id = `q${idx}`;
+
+              label.htmlFor = `q${idx}`;
+              label.appendChild(cb);
+              label.insertAdjacentText('beforeend', ' ' + q);
+
+              li.appendChild(label);
+              ol.appendChild(li);
+            });
+            botMessage.appendChild(ol);
+
+            // Add a button to save selected questions
+            const saveButton = document.createElement('button');
+
+            saveButton.id = 'saveButton';
+            saveButton.textContent = 'Save Selected Questions';
+            saveButton.onclick = () => {
+              const selectedQuestions = Array.from(document.querySelectorAll('.question-checkbox:checked')).map(
+                (checkbox) => checkbox.value,
+              );
+              if (selectedQuestions.length > 0) {
+                vscode.postMessage({
+                  command: 'saveQuestions',
+                  questions: selectedQuestions,
+                });
+
+                saveButton.disabled = true; // Disable button after saving
+                saveButton.style.cursor = 'not-allowed';
+                saveButton.textContent = 'Submitted';
+              } else {
+                const errorMessage = document.createElement('p');
+                errorMessage.textContent = 'Please select at least one question to save.';
+                errorMessage.style.color = 'red';
+                botMessage.appendChild(errorMessage);
+              }
+            };
+            botMessage.appendChild(saveButton);
+          } else {
+            // If not an array or empty array
+            botMessage.innerHTML = marked.parse(message.text);
+          }
           chatDiv.appendChild(botMessage);
           chatDiv.scrollTop = chatDiv.scrollHeight;
         } else if (message.command === 'error') {

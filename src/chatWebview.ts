@@ -2,6 +2,11 @@ import { window, ViewColumn, WebviewPanel, ExtensionContext } from 'vscode';
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
 import * as path from 'path';
+import { decode } from 'js-base64';
+import { getSelectionRanges } from './utils/editor-utils';
+import { getCodeForFile } from './utils/workspace-util';
+import { ReviewCommentService } from './review-comment';
+import { createCommentFromObject, CsvEntry, CsvStructure } from './model';
 
 export class ChatWebview {
   private panel: WebviewPanel | undefined;
@@ -9,7 +14,12 @@ export class ChatWebview {
 
   constructor(private context: ExtensionContext) {}
 
-  public async show(highlightedText: string, scriptContent: string, scriptFileName: string) {
+  public async show(
+    highlightedText: string,
+    scriptContent: string,
+    scriptFileName: string,
+    commentService: ReviewCommentService,
+  ) {
     // Dispose any existing panel
     if (this.panel) {
       this.panel.dispose();
@@ -80,8 +90,78 @@ export class ChatWebview {
         } else {
           this.panel?.webview.postMessage({ command: 'fileContext', file: 'No active editor found.' });
         }
+      } else if (message.command === 'saveQuestions') {
+        // Save the selected questions to code-review.csv
+        await this.saveSelectedQuestions(this.panel, message.questions, commentService);
       }
     });
+  }
+
+  /**
+   * Saves the selected questions to the code-review.csv file.
+   *
+   * @param panel The webview panel.
+   * @param questions The selected questions to save.
+   */
+  private async saveSelectedQuestions(
+    panel: WebviewPanel | undefined,
+    questions: string[],
+    commentService: ReviewCommentService,
+  ) {
+    if (!panel) {
+      window.showErrorMessage('No active webview panel found.');
+      return;
+    }
+    // Get the active editor or or the first visible editor
+    const editor = window.activeTextEditor || window.visibleTextEditors[0];
+    if (!editor) {
+      window.showErrorMessage('No active editor found.');
+      return;
+    }
+    // Get the selected lines
+    const selectedLines = getSelectionRanges(editor);
+    if (selectedLines.length === 0) {
+      window.showErrorMessage('No lines selected.');
+      return;
+    }
+    // Get the range of the selected lines
+    const lineRanges = selectedLines
+      .map((range) => `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`)
+      .join('|');
+
+    // Get the file name
+    const fileName = editor.document.fileName;
+
+    // Get the current file path
+    const currentFilePath = path.relative(this.context.extensionPath, fileName);
+
+    // encode the snippet once
+    const encoded = getCodeForFile(fileName, lineRanges, this.context.extensionPath);
+
+    // Loop through the selected questions and create a CSV entry for each
+    for (const question of questions) {
+      const csvEntry: CsvEntry = {
+        id: '',
+        sha: '',
+        filename: '',
+        url: '',
+        lines: lineRanges,
+        title: currentFilePath, // Use the relative file path
+        comment: question,
+        priority: 0,
+        category: '',
+        additional: '',
+        private: 0,
+        code: encoded,
+      };
+      // Create a comment object from the CSV entry
+      const comment = createCommentFromObject(csvEntry);
+      // Save the CSV entry to the code-review.csv file
+      await commentService.addComment(comment, editor);
+    }
+
+    // Notify the user that the questions have been saved
+    window.showInformationMessage('Selected questions saved successfully.');
   }
 
   /**
@@ -140,9 +220,13 @@ export class ChatWebview {
       ${includeContext && highlightedText ? 'Context: ' + scriptContent : ''}
       ${userPrompt.trim()}
       Generate coding questions that test understanding of the script.
+      Please answer with a JSON array of strings, for example:
+      ["What is the …?", "Rewrite …", …]
+      Do not wrap it in any prose.
     `;
     } else {
-      prompt = userPrompt.trim();
+      // Stop the json array response on subsequent calls
+      prompt = `Do not answer in JSON format anymore. Use markdown format instead. ${userPrompt.trim()}`;
     }
 
     if (includeContext && this.conversationHistory.length > 0) {

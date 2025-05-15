@@ -158,6 +158,10 @@
         {
           "command": "codeReview.addNote",
           "group": "cmdGroup@1"
+        },
+        {
+          "command": "codeReview.generateQuestions",
+          "group": "cmdGroup@2"
         }
       ],
       "view/title": [
